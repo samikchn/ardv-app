@@ -14,7 +14,7 @@ function carte(p, vignette) {
   const etat = p.statut === 'publie' ? t('posts.published') : p.rappel ? t('posts.planned', { quand: quand(p.rappel) }) : t('posts.draft');
   return `<article class="ticket${p.statut === 'publie' ? ' servi' : ''}" role="button" tabindex="0" data-post="${esc(p.id)}">
     <div class="ticket-tete"><span class="ticket-num">${numero(p.numero)}</span><span class="ticket-nom">${esc(etat)}</span></div>
-    ${vignette ? `<img class="post-vignette" src="${esc(vignette)}" alt="">` : ''}
+    ${vignette ? `<img class="post-vignette" src="${esc(vignette)}" alt="" loading="lazy">` : ''}
     <p class="ticket-texte coupe">${esc(p.textes?.instagram || p.idee || '—')}</p>
     ${p.statut === 'publie' ? `<span class="tampon">${t('posts.published')}</span>` : ''}
   </article>`;
@@ -58,13 +58,17 @@ async function ouvrirPost(existant, apresFermeture) {
   const etat = {
     idee: existant ? existant.idee : lireBrouillon('post-idee'),
     photos: [],                       // nouvelles photos { url, blob, mime, base64 }
-    chemins: existant?.photos || [],  // photos déjà enregistrées
-    urls: existant ? await D.urlsPhotos(existant.photos || []).catch(() => []) : [],
+    chemins: [],  // photos déjà enregistrées (chemins) et leurs adresses d'affichage, dans le même ordre
+    urls: [],
     textes: existant?.textes && Object.keys(existant.textes).length ? existant.textes : null,
     rappel: existant?.rappel || null,
     anglais: false,
     erreur: '',
   };
+  if (existant?.photos?.length) {
+    const urls = await D.urlsPhotos(existant.photos).catch(() => []);
+    existant.photos.forEach((c, i) => { if (urls[i]) { etat.chemins.push(c); etat.urls.push(urls[i]); } });
+  }
   const feuille = document.createElement('div');
   feuille.className = 'feuille';
   feuille.setAttribute('role', 'dialog');
@@ -162,28 +166,30 @@ async function ouvrirPost(existant, apresFermeture) {
   const enregistrer = async () => {
     try {
       const nouveaux = await D.envoyerPhotos(etat.photos);
-      await D.enregistrerPost({ id: existant?.id, idee: etat.idee, textes: etat.textes, photos: [...etat.chemins, ...nouveaux], rappel: etat.rappel, statut: existant?.statut || 'prevu' });
+      await D.enregistrerPost({ id: existant?.id, idee: etat.idee, textes: etat.textes, photos: [...etat.chemins, ...nouveaux], rappel: etat.rappel, rappelChange: etat.rappel !== (existant?.rappel || null), statut: existant?.statut || 'prevu' });
       if (!existant) effacerBrouillon('post-idee');
       toast(etat.rappel ? t('posts.savedWithReminder') : t('posts.saved'));
       fermer();
     } catch (e) { etat.erreur = messageErreur(e); dessiner(); }
   };
 
+  // Les photos déjà enregistrées sont téléchargées dès l'ouverture : au moment du partage, tout est prêt
+  // (Android n'autorise le partage que juste après le toucher, sans attente réseau).
+  const nomPhoto = i => (i ? `${i}-` : '') + (etat.textes?.nomFichier || 'photo-cafe-au-rendez-vous-saint-denis.jpg');
+  etat.blobsEnregistres = [];
+  Promise.all(etat.urls.map(u => fetch(u).then(r => (r.ok ? r.blob() : null)).catch(() => null)))
+    .then(b => { etat.blobsEnregistres = b; });
+
   // Partage natif Android : photos + texte → Instagram / Facebook s'ouvrent avec tout prêt
-  const partager = async plateforme => {
+  const partager = plateforme => {
     const texte = etat.textes[plateforme] || '';
-    await copier(texte); // Instagram ignore souvent le texte partagé : il reste dans le presse-papiers
-    try {
-      const fichiers = [];
-      for (const [i, p] of etat.photos.entries()) fichiers.push(new File([p.blob], i ? `${i}-${etat.textes.nomFichier}` : etat.textes.nomFichier, { type: 'image/jpeg' }));
-      for (const [i, u] of etat.urls.entries()) {
-        const b = await (await fetch(u)).blob();
-        fichiers.push(new File([b], `${etat.photos.length + i}-${etat.textes.nomFichier}`, { type: 'image/jpeg' }));
-      }
-      const donnees = fichiers.length && navigator.canShare?.({ files: fichiers }) ? { files: fichiers, text: texte } : { text: texte };
-      await navigator.share(donnees);
-      toast(t('posts.sharedHint'));
-    } catch (e) { if (e?.name !== 'AbortError') toast(t('reviews.copied')); }
+    const blobs = [...etat.blobsEnregistres.filter(Boolean), ...etat.photos.map(p => p.blob)];
+    const fichiers = blobs.map((b, i) => new File([b], nomPhoto(i), { type: 'image/jpeg' }));
+    const donnees = fichiers.length && navigator.canShare?.({ files: fichiers }) ? { files: fichiers, text: texte } : { text: texte };
+    const envoi = navigator.share(donnees); // tout de suite, sans attendre : sinon Android refuse
+    copier(texte); // Instagram ignore souvent le texte partagé : il reste dans le presse-papiers
+    envoi.then(() => toast(t('posts.sharedHint')))
+      .catch(e => { if (e?.name !== 'AbortError') toast(t('posts.shareFailed')); });
   };
 
   dessiner();

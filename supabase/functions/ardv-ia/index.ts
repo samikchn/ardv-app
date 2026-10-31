@@ -72,7 +72,6 @@ Deno.serve(async (req) => {
           if (doitReessayer(r.status) === "sans-reflexion" && reflexion) { reflexion = false; continue; }
           break;
         }
-        if (dernier === 429) break; // quota du jour épuisé : inutile d'essayer les autres modèles Gemini
       }
     } else {
       for (const modele of modelesGroq(imagesDe(demande).length > 0)) {

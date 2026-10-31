@@ -9,7 +9,8 @@
  */
 const URL_APPLI = 'https://zpvnutaebvujpplbusae.supabase.co/functions/v1/ardv-avis-gmail';
 const JETON = 'A_REMPLACER';
-const RECHERCHE = '(from:businessprofile-noreply@google.com OR subject:"nouvel avis" OR subject:"new review") newer_than:30d -label:ardv-envoye';
+// Seulement les e-mails venant de Google (un e-mail piégé d'un autre expéditeur est ignoré)
+const RECHERCHE = 'from:google.com (subject:avis OR subject:review) newer_than:30d -label:ardv-envoye';
 
 function envoyerAvis() {
   const etiquette = GmailApp.getUserLabelByName('ardv-envoye') || GmailApp.createLabel('ardv-envoye');
@@ -17,7 +18,7 @@ function envoyerAvis() {
   if (!fils.length) return;
   const emails = [];
   fils.forEach(fil => fil.getMessages().forEach(m => emails.push({
-    id: m.getId(), sujet: m.getSubject(), date: m.getDate().toISOString(), texte: m.getPlainBody(),
+    id: m.getId(), de: m.getFrom(), sujet: m.getSubject(), date: m.getDate().toISOString(), texte: m.getPlainBody(),
   })));
   const r = UrlFetchApp.fetch(URL_APPLI, {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,

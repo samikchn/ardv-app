@@ -294,7 +294,7 @@ main { padding: 4px 16px 0; max-width: 560px; margin: 0 auto; outline: none; }
   body { padding: 0 !important; background: #fff; }
   body > *:not(#affiche-impression) { display: none !important; }
   #affiche-impression {
-    display: flex !important; width: 210mm; height: 297mm; aspect-ratio: auto; border-radius: 0; margin: 0; padding: 30mm 22mm;
+    display: flex !important; width: 210mm; height: 296mm; aspect-ratio: auto; border-radius: 0; margin: 0; padding: 30mm 22mm;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   #affiche-impression h3 { font-size: 54pt; }

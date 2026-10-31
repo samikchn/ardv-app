@@ -4,12 +4,12 @@
 // Corps : { emails: [{ id, sujet, date, texte }] }  ou  { retraiter: true } pour relire tous les e-mails gardés.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { lireEmailAvis } from "./lecture.js";
+import { lireEmailAvis, estExpediteurGoogle } from "./lecture.js";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
-type Email = { id: string; sujet?: string; date?: string; texte?: string };
+type Email = { id: string; de?: string; sujet?: string; date?: string; texte?: string };
 
 async function creerAvis(e: Email) {
   const avis = lireEmailAvis({ sujet: e.sujet || "", texte: e.texte || "" });
@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
       if (error) throw error;
       emails = data as Email[];
     } else {
-      emails = (corps.emails || []).filter((e) => e && typeof e.id === "string").slice(0, 100);
+      // Seuls les e-mails envoyés par Google comptent (sécurité : pas de faux avis par e-mail piégé)
+      emails = (corps.emails || []).filter((e) => e && typeof e.id === "string" && estExpediteurGoogle(e.de)).slice(0, 100);
       if (emails.length) {
         const { error } = await admin.from("ardv_emails").upsert(emails.map((e) => ({
           id: e.id, sujet: (e.sujet || "").slice(0, 300), date: e.date || null, texte: (e.texte || "").slice(0, 20000),

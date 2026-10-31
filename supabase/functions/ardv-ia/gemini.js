@@ -9,7 +9,7 @@ export function modelesAEssayer(modeleChoisi) {
 }
 
 // 404 : modèle inconnu → suivant. 400 : réglage refusé → sans réglage de réflexion.
-// 500/503 : surchargé → réessayer une fois après une pause, puis modèle suivant.
+// 500/503 : surchargé → modèle suivant (chaque appel est limité en temps).
 export function doitReessayer(status) {
   if (status === 404) return 'modele';
   if (status === 400) return 'sans-reflexion';

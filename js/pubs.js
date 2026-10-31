@@ -6,6 +6,9 @@ import { contexteRestaurant } from './profil.js';
 const ROUGE = ['PAUSED', 'REMOVED', 'NOT_ELIGIBLE', 'ENDED', 'NOT_STARTED', 'PENDING'];
 const ORANGE = ['LIMITED', 'LEARNING', 'MISCONFIGURED'];
 
+// Date du jour en heure locale (AAAA-MM-JJ) : le résumé du coach est fait une fois par jour
+export const jourLocal = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export function voyant({ statut, etat }) {
   if (statut !== 'ENABLED' || ROUGE.includes(etat)) return 'rouge';
   if (ORANGE.includes(etat)) return 'orange';

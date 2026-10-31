@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { voyant, ligneChiffres, buildCoachPrompt, euros } from '../js/pubs.js';
+import { voyant, ligneChiffres, buildCoachPrompt, euros, jourLocal } from '../js/pubs.js';
 import { DEFAULT_PROFILE } from '../js/profil.js';
 
 const C = { nom: 'Weekend Diner ARDV', statut: 'ENABLED', etat: 'LIMITED', budget: 5,
@@ -34,4 +34,9 @@ test('coach : ses règles, les vrais chiffres, jamais de stratégie automatique'
   assert.match(p.user, /glace artisanale près de moi/);
   assert.match(p.user, /Pourquoi peu de clients le soir/);
   assert.match(p.system, /French/);
+});
+
+test('revue 2 : jour local (pas UTC) pour le résumé du coach', () => {
+  const d = new Date(2026, 10, 1, 0, 30); // 1er nov. 00h30 heure locale
+  assert.equal(jourLocal(d), '2026-11-01');
 });

@@ -18,8 +18,8 @@ function main() {
       budget: Math.round((+(r.campaignBudget && r.campaignBudget.amountMicros) || 0) / 1e4) / 100,
     };
   }
-  // 2. Chiffres : hier, 7 jours, 30 jours
-  [['hier', 'YESTERDAY'], ['semaine', 'LAST_7_DAYS'], ['mois', 'LAST_30_DAYS']].forEach(function (p) {
+  // 2. Chiffres : hier et 7 jours
+  [['hier', 'YESTERDAY'], ['semaine', 'LAST_7_DAYS']].forEach(function (p) {
     var lignes = AdsApp.search('SELECT campaign.id, metrics.clicks, metrics.impressions, metrics.cost_micros, metrics.conversions, metrics.phone_calls FROM campaign WHERE campaign.status != \'REMOVED\' AND segments.date DURING ' + p[1]);
     while (lignes.hasNext()) {
       var l = lignes.next();

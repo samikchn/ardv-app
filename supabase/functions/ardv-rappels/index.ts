@@ -23,27 +23,33 @@ Deno.serve(async (req) => {
   if (!jeton("cron") || req.headers.get("x-ardv-jeton") !== jeton("cron")) return json({ erreur: "interdit" }, 403);
 
   const { data: posts, error } = await admin.from("ardv_posts").select("id, numero, idee, textes")
-    .eq("statut", "prevu").eq("rappel_envoye", false).lte("rappel", new Date().toISOString()).limit(10);
+    .eq("statut", "prevu").eq("rappel_envoye", false).lte("rappel", new Date().toISOString())
+    .gte("rappel", new Date(Date.now() - 864e5).toISOString()) // plus d'un jour de retard : trop tard pour sonner
+    .limit(10);
   if (error) return json({ erreur: error.message }, 500);
   if (!posts?.length) return json({ envoyes: 0 });
 
   const { data: abonnes } = await admin.from("ardv_push").select("endpoint, abonnement");
+  if (!abonnes?.length) return json({ rappels: posts.length, envoyes: 0, raison: "aucun téléphone abonné" });
+  if (!jeton("vapid")) return json({ erreur: "clés de notification absentes" }, 500);
   const s = await serveurPush(jeton("vapid")!);
   let envoyes = 0;
   for (const p of posts) {
+    let recu = 0;
     const extrait = String(p.idee || p.textes?.instagram || "").slice(0, 90);
     const message = JSON.stringify({ title: "C'est l'heure de publier 📸", body: extrait || "Votre post est prêt.", tag: `post-${p.id}`, url: "./?onglet=posts" });
     for (const a of abonnes || []) {
       try {
         await s.subscribe(a.abonnement as webpush.PushSubscription).pushTextMessage(message, { ttl: 6 * 3600, urgency: webpush.Urgency.High });
-        envoyes++;
+        envoyes++; recu++;
       } catch (e) {
         // Téléphone désabonné (appli désinstallée, notifications coupées) : on l'oublie
         if (e instanceof webpush.PushMessageError && e.isGone()) await admin.from("ardv_push").delete().eq("endpoint", a.endpoint);
         else console.log("notification impossible :", (e as Error).message);
       }
     }
-    await admin.from("ardv_posts").update({ rappel_envoye: true }).eq("id", p.id);
+    // Échec passager pour tous les téléphones : on réessaiera au prochain passage (5 min)
+    if (recu) await admin.from("ardv_posts").update({ rappel_envoye: true }).eq("id", p.id);
   }
   console.log(`${posts.length} rappel(s), ${envoyes} notification(s)`);
   return json({ rappels: posts.length, envoyes });

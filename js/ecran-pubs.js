@@ -2,7 +2,7 @@
 // une question au coach, et un bouton vers Google Ads. Lecture seule : rien n'est modifié dans le compte Ads.
 import { t, getLang } from './i18n.js';
 import { esc, toast, messageErreur, ICONES } from './ui.js';
-import { voyant, ligneChiffres, buildCoachPrompt, euros } from './pubs.js';
+import { voyant, ligneChiffres, buildCoachPrompt, euros, jourLocal } from './pubs.js';
 import { lireImage } from './images.js';
 import * as D from './donnees.js';
 
@@ -25,7 +25,7 @@ export async function afficherPubs(main) {
     <p class="sous-titre">${pubs ? t('ads.updated', { quand: ilYa(pubs.recu) }) : t('ads.intro')}</p>
     ${erreur ? `<p class="erreur">${esc(erreur)}</p>` : ''}
     ${!pubs && !erreur ? `<p class="vide">${t('ads.empty')}</p>` : ''}
-    ${pubs ? `<article class="ticket coach"><div class="ticket-tete"><span class="ticket-nom">${t('ads.coach')}</span></div><p class="ticket-texte" id="coach-texte">${pubs.coach && pubs.coach_date === new Date().toISOString().slice(0, 10) ? esc(pubs.coach) : `<span class="chargement">${t('ads.coachWriting')}</span>`}</p></article>` : ''}
+    ${pubs ? `<article class="ticket coach"><div class="ticket-tete"><span class="ticket-nom">${t('ads.coach')}</span></div><p class="ticket-texte" id="coach-texte"><span class="chargement">${t('ads.coachWriting')}</span></p></article>` : ''}
     <ul class="pile">${campagnes.map(c => `<li><article class="ticket campagne">
       <div class="ticket-tete"><span class="voyant voyant-${voyant(c)}" aria-hidden="true"></span><span class="ticket-nom">${esc(c.nom)}</span></div>
       <p class="etat-campagne">${t('ads.state.' + voyant(c))}${c.budget ? ` · ${t('ads.budget', { b: euros(c.budget, langue) })}` : ''}</p>
@@ -38,15 +38,25 @@ export async function afficherPubs(main) {
     </div>`;
 
   main.querySelector('#demander-coach').addEventListener('click', () => ouvrirCoach(pubs));
-  // Résumé du jour : une seule demande à l'IA par jour (formule gratuite)
-  if (pubs && !(pubs.coach && pubs.coach_date === new Date().toISOString().slice(0, 10))) {
+  // Résumé du jour : une seule demande à l'IA par jour (formule gratuite), réutilisée à chaque visite.
+  // Après un échec, on attend 30 min avant de redemander (pas d'appel à chaque ouverture).
+  if (pubs) {
     const zone = main.querySelector('#coach-texte');
+    const jour = jourLocal();
     try {
+      const deja = pubs.coach_date === jour && pubs.coach ? pubs.coach : await D.coachDuJour(jour);
+      if (deja) { zone.textContent = deja; return; }
+      let echec = 0;
+      try { echec = +sessionStorage.getItem('ardv-coach-echec') || 0; } catch { /* rien */ }
+      if (Date.now() - echec < 30 * 60e3) { zone.textContent = t('ads.coachLater'); return; }
       const profil = await D.chargerProfil();
       const texte = await D.appelIA(buildCoachPrompt({ campagnes, termes: pubs.donnees?.termes, profil, langue }));
       zone.textContent = texte;
-      D.enregistrerCoach(pubs.id, texte).catch(() => {});
-    } catch (e) { zone.textContent = messageErreur(e); }
+      D.enregistrerCoach(pubs.id, texte, jour).catch(() => {});
+    } catch (e) {
+      zone.textContent = messageErreur(e);
+      try { sessionStorage.setItem('ardv-coach-echec', String(Date.now())); } catch { /* rien */ }
+    }
   }
 }
 

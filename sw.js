@@ -1,5 +1,5 @@
 // Service worker : garde les fichiers de l'appli pour un démarrage rapide (réseau d'abord, cache en secours).
-const CACHE = 'ardv-v8';
+const CACHE = 'ardv-v9';
 const FICHIERS = ['./', 'index.html', 'style.css', 'config.js', 'manifest.json', 'icon.svg', 'icon-180.png', 'icon-192.png',
   'js/app.js', 'js/i18n.js', 'js/ui.js', 'js/donnees.js', 'js/profil.js', 'js/avis-prompt.js', 'js/brouillon.js',
   'js/ecran-avis.js', 'js/ecran-fiche.js', 'js/connexion.js',
@@ -34,6 +34,7 @@ self.addEventListener('notificationclick', e => {
   const url = new URL(e.notification.data?.url || './?onglet=posts', self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(fenetres => {
     const f = fenetres.find(w => w.url.startsWith(self.registration.scope));
-    return f ? f.navigate(url).then(w => (w || f).focus()) : self.clients.openWindow(url);
+    if (!f) return self.clients.openWindow(url);
+    return f.navigate(url).then(w => (w || f).focus()).catch(() => f.focus().catch(() => self.clients.openWindow(url)));
   }));
 });

@@ -149,10 +149,12 @@ export async function urlsPhotos(chemins = []) {
   if (estDemo() || !chemins.length) return chemins;
   const { data, error } = await (await client()).storage.from('ardv-photos').createSignedUrls(chemins, 3600);
   if (error) throw versReseau(error);
-  return data.map(x => x.signedUrl);
+  return data.map(x => x.signedUrl || null); // null : photo introuvable
 }
 export async function enregistrerPost(post) {
-  const ligne = { idee: post.idee || '', textes: post.textes || {}, photos: post.photos || [], rappel: post.rappel || null, statut: post.statut || 'prevu', rappel_envoye: false };
+  const ligne = { idee: post.idee || '', textes: post.textes || {}, photos: post.photos || [], rappel: post.rappel || null, statut: post.statut || 'prevu' };
+  // Le rappel ne repart que pour un nouveau post ou si sa date a changé (sinon il sonnerait deux fois)
+  if (!post.id || post.rappelChange) ligne.rappel_envoye = false;
   if (estDemo()) {
     const d = demoLire(); d.posts = d.posts || [];
     if (post.id) Object.assign(d.posts.find(p => p.id === post.id) || {}, ligne);
@@ -188,8 +190,14 @@ export async function dernieresPubs() {
   if (error) throw versReseau(error);
   return data;
 }
-export async function enregistrerCoach(id, texte) {
-  const jour = new Date().toISOString().slice(0, 10);
+// Résumé du coach déjà fait aujourd'hui (sur n'importe quel envoi de chiffres du jour)
+export async function coachDuJour(jour) {
+  if (estDemo()) { const p = demoLire().pubs; return p?.coach_date === jour ? p.coach : null; }
+  const { data, error } = await (await client()).from('ardv_pubs').select('coach').eq('coach_date', jour).not('coach', 'is', null).limit(1).maybeSingle();
+  if (error) throw versReseau(error);
+  return data?.coach || null;
+}
+export async function enregistrerCoach(id, texte, jour) {
   if (estDemo()) { const d = demoLire(); d.pubs = { ...(d.pubs || DEMO_PUBS()), coach: texte, coach_date: jour }; demoEcrire(d); return; }
   const { error } = await (await client()).from('ardv_pubs').update({ coach: texte, coach_date: jour }).eq('id', id);
   if (error) throw versReseau(error);

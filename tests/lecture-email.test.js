@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lireEmailAvis, cleAvis } from '../supabase/functions/ardv-avis-gmail/lecture.js';
+import { lireEmailAvis, cleAvis, estExpediteurGoogle } from '../supabase/functions/ardv-avis-gmail/lecture.js';
 
 // Reconstitué depuis la capture de l'e-mail Google du 31/10 (à ajuster sur les vrais e-mails reçus)
 const TEXTE = `Bravo, vous avez reçu un nouvel avis avec 5 étoile(s)
@@ -44,4 +44,19 @@ test('lien non https ignoré', () => {
   const t = 'Nouvel avis\nJean\nSuper\nRépondre à l\'avis <javascript:alert(1)>';
   const avis = lireEmailAvis({ sujet: 'nouvel avis avec 4 étoile(s)', texte: t });
   assert.equal(avis[0].lien, null);
+});
+
+test('revue 2 : seuls les liens Google sont gardés', () => {
+  const t = (url) => lireEmailAvis({ sujet: 'nouvel avis avec 5 étoile(s)', texte: `Jean\nSuper\nRépondre à l'avis <${url}>` })[0].lien;
+  assert.equal(t('https://business.google.com/reviews/x'), 'https://business.google.com/reviews/x');
+  assert.equal(t('https://g.page/r/abc'), 'https://g.page/r/abc');
+  assert.equal(t('https://google.com.arnaque.fr/login'), null);
+  assert.equal(t('https://faux-google.com/x'), null);
+});
+
+test('revue 2 : expéditeur Google exigé', () => {
+  assert.equal(estExpediteurGoogle('Google Business Profile <businessprofile-noreply@google.com>'), true);
+  assert.equal(estExpediteurGoogle('noreply@google.com'), true);
+  assert.equal(estExpediteurGoogle('Pirate <nouvel.avis@gmail.com>'), false);
+  assert.equal(estExpediteurGoogle('x@google.com.evil.fr'), false);
 });

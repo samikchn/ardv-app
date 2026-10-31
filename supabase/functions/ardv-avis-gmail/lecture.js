@@ -11,10 +11,19 @@ const BORNES = [
   /^répondre aux avis des clients/i, /^replying to reviews/i,
 ];
 
+// Seuls les liens vers Google sont gardés (un e-mail piégé ne doit pas mener vers une fausse page de connexion)
+const estHoteGoogle = h => h === 'google.com' || h.endsWith('.google.com') || h === 'g.page';
 const lienDe = ligne => {
   const m = ligne.match(/<(https:\/\/[^>\s]+)>/);
-  return m ? m[1] : null;
+  if (!m) return null;
+  try { return estHoteGoogle(new URL(m[1]).hostname) ? m[1] : null; } catch { return null; }
 };
+
+// L'e-mail doit venir de Google (adresse @google.com ou @*.google.com)
+export function estExpediteurGoogle(de) {
+  const m = String(de || '').match(/<?([^<>\s]+@([^<>\s]+?))>?\s*$/);
+  return !!m && estHoteGoogle(m[2].toLowerCase());
+}
 
 export function cleAvis(auteur, texte) {
   const norme = s => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
