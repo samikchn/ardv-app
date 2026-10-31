@@ -4,6 +4,8 @@ import { estDemo, sessionActive } from './donnees.js';
 import { afficherAvis } from './ecran-avis.js';
 import { afficherFiche } from './ecran-fiche.js';
 import { afficherPosts } from './ecran-posts.js';
+import { afficherPubs } from './ecran-pubs.js';
+import { afficherEcrire } from './ecran-ecrire.js';
 import { rafraichirRappels } from './rappels.js';
 import { afficherConnexion } from './connexion.js';
 
@@ -38,6 +40,8 @@ async function afficherEcran(nom) {
   if (nom === 'avis') await afficherAvis(main);
   else if (nom === 'fiche') await afficherFiche(main);
   else if (nom === 'posts') await afficherPosts(main);
+  else if (nom === 'pubs') await afficherPubs(main);
+  else if (nom === 'ecrire') afficherEcrire(main);
   else bientot();
   window.scrollTo(0, 0);
 }
