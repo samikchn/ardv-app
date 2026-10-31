@@ -4,6 +4,10 @@ import { esc, toast, messageErreur, copier, ICONES } from './ui.js';
 import { MODELES, buildEcrirePrompt, lireAffiche } from './ecrire-prompt.js';
 import * as D from './donnees.js';
 
+// Styles d'affiche (le choix est retenu sur le téléphone)
+// Tous sur fond blanc : la couleur ne sert qu'au cadre, aux étoiles et aux titres (peu d'encre)
+const THEMES = ['chocolat', 'logo', 'nb'];
+
 export function afficherEcrire(main) {
   main.innerHTML = `
     <h1 class="titre-ecran">${t('write.title')}</h1>
@@ -20,7 +24,9 @@ export function afficherEcrire(main) {
 }
 
 function ouvrirModele(modele) {
-  const etat = { valeurs: {}, resultat: null, erreur: '', noirBlanc: true };
+  let themeMemo = 'chocolat';
+  try { themeMemo = localStorage.getItem('ardv-theme-affiche') || 'chocolat'; } catch { /* rien */ }
+  const etat = { valeurs: {}, resultat: null, erreur: '', theme: THEMES.includes(themeMemo) ? themeMemo : 'chocolat' };
   const feuille = document.createElement('div');
   feuille.className = 'feuille';
   feuille.setAttribute('role', 'dialog');
@@ -44,8 +50,10 @@ function ouvrirModele(modele) {
       ${statut === 'charge' ? `<p class="chargement" role="status">${t('write.writing')}</p>` : ''}
       <button type="button" class="bouton ${r ? 'bouton-trait' : 'bouton-or'} bouton-large" id="e-ecrire" ${statut === 'charge' ? 'disabled' : ''}>${ICONES.plume}${r ? t('posts.rewrite') : t('write.write')}</button>
       ${r && modele.affiche ? `
-        <label class="case"><input type="checkbox" id="e-nb" ${etat.noirBlanc ? 'checked' : ''}>${t('write.bw')}</label>
-        <div class="affiche${etat.noirBlanc ? ' nb' : ''}" id="affiche"><img class="affiche-logo" src="logo.png" alt="Logo Au Rendez-Vous"><p class="affiche-etoiles" aria-hidden="true">✦ ✦ ✦</p><h3>${esc(r.titre)}</h3><p class="affiche-texte">${esc(r.texte)}</p><p class="affiche-marque">Au Rendez-Vous</p><p class="affiche-pied">Crêperie &amp; Glacier Artisanaux</p><p class="affiche-ville">✦ SAINT-DENIS ✦</p></div>
+        <div class="choix-theme" role="radiogroup" aria-label="${t('write.style')}">
+          ${THEMES.map(th => `<button type="button" role="radio" aria-checked="${etat.theme === th}" data-theme="${th}"><span class="pastille t-${th}"></span>${t('write.t.' + th)}</button>`).join('')}
+        </div>
+        <div class="affiche t-${etat.theme}" id="affiche"><img class="affiche-logo" src="logo.png" alt="Logo Au Rendez-Vous"><p class="affiche-etoiles" aria-hidden="true">✦ ✦ ✦</p><h3>${esc(r.titre)}</h3><p class="affiche-texte">${esc(r.texte)}</p><p class="affiche-marque">Au Rendez-Vous</p><p class="affiche-pied">Crêperie &amp; Glacier Artisanaux</p><p class="affiche-ville">✦ SAINT-DENIS ✦</p></div>
         <button type="button" class="bouton bouton-or bouton-large" id="e-imprimer">${t('write.print')}</button>` : ''}
       ${r && !modele.affiche ? `
         <textarea class="reponse post-texte" id="e-texte" rows="12">${esc(r)}</textarea>
@@ -58,7 +66,11 @@ function ouvrirModele(modele) {
     $('#e-texte')?.addEventListener('input', e => { etat.resultat = e.target.value; });
     $('#e-copier')?.addEventListener('click', async () => toast((await copier(etat.resultat)) ? t('reviews.copied') : t('reviews.copyFailed')));
     $('#e-imprimer')?.addEventListener('click', imprimer);
-    $('#e-nb')?.addEventListener('change', e => { etat.noirBlanc = e.target.checked; dessiner(); });
+    feuille.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => {
+      etat.theme = b.dataset.theme;
+      try { localStorage.setItem('ardv-theme-affiche', etat.theme); } catch { /* rien */ }
+      dessiner();
+    }));
   };
 
   const ecrire = async () => {
