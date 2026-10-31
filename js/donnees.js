@@ -21,12 +21,13 @@ async function client() {
 }
 
 /* ---------- Démo : petit stockage local ---------- */
-const DEMO_CLE = 'ardv-demo';
+const DEMO_CLE = 'ardv-demo-2';
 const DEMO_INITIAL = () => ({
   profil: null,
-  numero: 41,
+  numero: 42,
   avis: [
-    { id: 'd1', numero: 41, auteur: 'Mark Redmond', etoiles: 5, texte: "Worthy of its 5 star review. Not because the food is exceptional although it's good. I allocate 5 stars for the welcome.", statut: 'fait', cree: new Date(Date.now() - 864e5).toISOString() },
+    { id: 'd1', numero: 41, auteur: 'Client démo', etoiles: 5, texte: 'Très bon accueil, galettes généreuses. On reviendra !', statut: 'fait', cree: new Date(Date.now() - 864e5).toISOString() },
+    { id: 'd2', numero: 42, auteur: 'Camille D.', etoiles: 5, texte: 'Super crêperie juste derrière la Basilique, la galette complète était parfaite et le personnel adorable. Et...', lien: 'https://business.google.com/', statut: 'a_repondre', cree: new Date().toISOString() },
   ],
   reponses: [],
 });

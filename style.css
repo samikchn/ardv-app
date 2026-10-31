@@ -196,6 +196,8 @@ main { padding: 4px 16px 0; max-width: 560px; margin: 0 auto; outline: none; }
 .apercu-capture { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
 .apercu-capture img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1.5px solid var(--ticket-ligne); }
 .aide { color: var(--encre-douce); font-size: 15px; margin: 0 0 16px; }
+.lien-avis { color: var(--comptoir-2); font-weight: 700; text-underline-offset: 3px; display: inline-block; padding: 6px 0; }
+@media (prefers-color-scheme: dark) { .lien-avis { color: var(--or); } }
 
 /* ---------- Feuille (le ticket ouvert) ---------- */
 .feuille {

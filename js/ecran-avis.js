@@ -94,6 +94,7 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
     feuille.innerHTML = `<article class="ticket">
       <div class="feuille-haut"><h2 id="f-titre">${titre}</h2><button type="button" class="fermer" aria-label="${t('reviews.close')}">×</button></div>
       ${avisExistant ? '' : `<p class="aide">${t('reviews.pasteHint')}</p>`}
+      ${avisExistant?.lien ? `<p class="aide">${/…|\.\.\.$/.test(avisExistant.texte || '') ? t('reviews.truncated') + ' ' : ''}<a class="lien-avis" href="${esc(avisExistant.lien)}" target="_blank" rel="noopener">${t('reviews.openFull')}</a></p>` : ''}
       <label class="champ"><span>${t('reviews.textLabel')}</span>
         <textarea id="f-texte" placeholder="${t('reviews.textPlaceholder')}">${esc(etat.texte)}</textarea></label>
       <div class="rangee">
@@ -102,6 +103,8 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
         <input type="file" id="f-image" accept="image/*" hidden>
       </div>
       ${etat.image ? `<div class="apercu-capture"><img src="${etat.image.url}" alt=""><span>${t('reviews.photoAdded')}</span><button type="button" class="bouton bouton-trait" id="f-retirer">${t('reviews.photoRemove')}</button></div>` : ''}
+      <label class="champ"><span>${t('reviews.name')}</span>
+        <input id="f-nom" value="${esc(etat.auteur || '')}" placeholder="${t('reviews.namePlaceholder')}" autocomplete="off"></label>
       <span class="champ"><span>${t('reviews.stars')}</span></span>
       <div class="choix-etoiles" role="group" aria-label="${t('reviews.stars')}">
         ${[1, 2, 3, 4, 5].map(i => `<button type="button" data-etoile="${i}" aria-label="${i}/5" aria-pressed="${etat.etoiles >= i}">★</button>`).join('')}
@@ -131,6 +134,7 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
     $('#f-texte').addEventListener('input', e => { etat.texte = e.target.value; if (!avisExistant) sauverBrouillon('avis-texte', etat.texte); });
     $('#f-souvenir').addEventListener('input', e => { etat.souvenir = e.target.value; sauverBrouillon('avis-souvenir-' + cle, etat.souvenir); });
     $('#f-rafiza').addEventListener('change', e => { etat.signerRafiza = e.target.checked; });
+    $('#f-nom').addEventListener('input', e => { etat.auteur = e.target.value.trim() || null; });
     $('#f-coller').addEventListener('click', async () => {
       try { const txt = await navigator.clipboard.readText(); if (txt) { etat.texte = txt; if (!avisExistant) sauverBrouillon('avis-texte', txt); dessiner(); } } catch { $('#f-texte').focus(); }
     });
@@ -154,7 +158,7 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
         let avis = etat.avis;
         if (!avis) {
           const n = nettoyerAvis(etat.texte);
-          avis = await D.ajouterAvis({ auteur: n.auteur || etat.auteur, etoiles: etat.etoiles || n.etoiles || null, texte: n.texte });
+          avis = await D.ajouterAvis({ auteur: etat.auteur || n.auteur, etoiles: etat.etoiles || n.etoiles || null, texte: n.texte });
           etat.avis = avis; // si « Fait » échoue ensuite, on ne recrée pas le ticket
         }
         await D.marquerFait(avis.id, etat.reponse);
@@ -168,7 +172,8 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
 
   const ecrire = async () => {
     const n = nettoyerAvis(etat.texte);
-    const avis = { ...n, etoiles: etat.etoiles || n.etoiles, auteur: n.auteur || etat.auteur };
+    if (!etat.auteur && n.auteur) etat.auteur = n.auteur; // nom lu dans le texte collé
+    const avis = { ...n, etoiles: etat.etoiles || n.etoiles, auteur: etat.auteur || n.auteur };
     if (!avis.texte && !avis.etoiles && !etat.image) { dessiner('erreur-saisie'); return; }
     if (!etat.etoiles && n.etoiles) etat.etoiles = n.etoiles; // étoiles lues dans le texte collé
     etat.erreur = '';
