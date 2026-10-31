@@ -56,6 +56,9 @@ export function nettoyerAvis(brut = '') {
   return r;
 }
 
+// Les e-mails de Google ne donnent que le début des longs avis, terminé par « ... »
+export const estCoupe = texte => /(\.\.\.|…)\s*$/.test(String(texte || ''));
+
 export function debutsRecents(reponses = [], n = 30) {
   return reponses.slice(0, n).map(r => String(r).trim().split(/\s+/).slice(0, 6).join(' ')).filter(Boolean);
 }
@@ -91,6 +94,7 @@ export function buildReviewPrompt({ avis, souvenir = '', profil, exemples = [], 
   if (avis.auteur) morceaux.push('Reviewer: ' + avis.auteur);
   if (avis.etoiles) morceaux.push('Stars: ' + avis.etoiles + '/5');
   if (avis.texte) morceaux.push('Review text: ' + avis.texte);
+  if (estCoupe(avis.texte)) morceaux.push('(This text was cut by Google: only the beginning is known. Reply warmly to what is written, never guess or invent what comes after.)');
   else if (avecCapture) morceaux.push('The review is in the attached screenshot: read the name, the stars and the text, then reply to it.');
   else morceaux.push('Review text: (no text, only stars)');
   if (avis.traductionSeule) morceaux.push("(This is Google's translation, the original was not copied: the customer's language is unknown. Reply in French, warmly, with one short sentence in English.)");

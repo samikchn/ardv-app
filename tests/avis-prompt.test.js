@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nettoyerAvis, buildReviewPrompt, debutsRecents } from '../js/avis-prompt.js';
+import { nettoyerAvis, buildReviewPrompt, debutsRecents, estCoupe } from '../js/avis-prompt.js';
 import { DEFAULT_PROFILE } from '../js/profil.js';
 
 const base = { profil: DEFAULT_PROFILE, exemples: [], recentes: [], variante: 0, signerRafiza: false };
@@ -93,4 +93,14 @@ test('revue relue : capture → pas de « only stars » contradictoire', () => {
   const p = buildReviewPrompt({ ...base, avis: { texte: '' }, avecCapture: true });
   assert.doesNotMatch(p.user, /only stars/);
   assert.match(p.user, /screenshot/);
+});
+
+test('avis coupé par Google : détecté, et l\'IA ne doit pas inventer la suite', () => {
+  assert.equal(estCoupe('Excellent, fast service. Very friendly staff. And...'), true);
+  assert.equal(estCoupe('Super crêpes …'), true);
+  assert.equal(estCoupe('Super crêpes !'), false);
+  const p = buildReviewPrompt({ ...base, avis: { texte: 'Excellent service. And...' } });
+  assert.match(p.user, /cut by Google/i);
+  const q = buildReviewPrompt({ ...base, avis: { texte: 'Excellent service.' } });
+  assert.doesNotMatch(q.user, /cut by Google/i);
 });

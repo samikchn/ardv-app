@@ -94,6 +94,12 @@ export async function ajouterAvis({ auteur = null, etoiles = null, texte = '' })
   if (error) throw versReseau(error);
   return data;
 }
+// Avis coupé par Google : on garde le texte complet collé par Rafiza
+export async function majTexteAvis(avisId, texte) {
+  if (estDemo()) { const d = demoLire(); const a = d.avis.find(x => x.id === avisId); if (a) a.texte = texte; demoEcrire(d); return; }
+  const { error } = await (await client()).from('ardv_avis').update({ texte }).eq('id', avisId);
+  if (error) throw versReseau(error);
+}
 export async function marquerFait(avisId, texteReponse) {
   if (estDemo()) {
     const d = demoLire();

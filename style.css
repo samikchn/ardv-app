@@ -323,3 +323,12 @@ main { padding: 4px 16px 0; max-width: 560px; margin: 0 auto; outline: none; }
   #affiche-impression .affiche-pied { font-size: 16pt; }
   #affiche-impression .affiche-ville { font-size: 12pt; }
 }
+
+/* Avis coupé par Google */
+.mention-coupe {
+  display: inline-block; margin-top: 8px; padding: 2px 10px; border-radius: 999px;
+  border: 1.5px dashed var(--encre-douce); color: var(--encre-douce); font-size: 13px; font-weight: 700;
+}
+.bandeau-coupe { border: 2px dashed var(--ticket-ligne); border-radius: 10px; padding: 12px; margin: 0 0 16px; display: grid; gap: 10px; }
+.bandeau-coupe p { margin: 0; }
+.bandeau-coupe .aide { margin: 0; font-size: 14px; }

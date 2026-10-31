@@ -1,7 +1,7 @@
 // Écran Avis : la pile de tickets, et le ticket ouvert (coller → réponse → Copier / Autre version / Fait).
 import { t } from './i18n.js';
 import { esc, etoiles, numero, toast, messageErreur, copier, ICONES } from './ui.js';
-import { nettoyerAvis, buildReviewPrompt, debutsRecents } from './avis-prompt.js';
+import { nettoyerAvis, buildReviewPrompt, debutsRecents, estCoupe } from './avis-prompt.js';
 import { sauverBrouillon, lireBrouillon, effacerBrouillon } from './brouillon.js';
 import * as D from './donnees.js';
 import { lireImage } from './images.js';
@@ -14,6 +14,7 @@ function carteTicket(a, servi = false) {
       <span class="etoiles" aria-label="${a.etoiles || 0}/5">${etoiles(a.etoiles)}</span>
     </div>
     <p class="ticket-texte coupe">${esc(a.texte) || '—'}</p>
+    ${!servi && estCoupe(a.texte) ? `<span class="mention-coupe">${t('reviews.partial')}</span>` : ''}
     ${servi ? `<span class="tampon">${t('reviews.done').replace(' ✓', '')} ✓</span>` : ''}
   </article>`;
 }
@@ -84,7 +85,12 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
     feuille.innerHTML = `<article class="ticket">
       <div class="feuille-haut"><h2 id="f-titre">${titre}</h2><button type="button" class="fermer" aria-label="${t('reviews.close')}">×</button></div>
       ${avisExistant ? '' : `<p class="aide">${t('reviews.pasteHint')}</p>`}
-      ${avisExistant?.lien ? `<p class="aide">${/…|\.\.\.$/.test(avisExistant.texte || '') ? t('reviews.truncated') + ' ' : ''}<a class="lien-avis" href="${esc(avisExistant.lien)}" target="_blank" rel="noopener">${t('reviews.openFull')}</a></p>` : ''}
+      ${avisExistant && estCoupe(etat.texte) ? `<div class="bandeau-coupe">
+        <p><b>${t('reviews.truncated')}</b></p>
+        ${avisExistant.lien ? `<a class="bouton bouton-trait bouton-large" href="${esc(avisExistant.lien)}" target="_blank" rel="noopener">${t('reviews.step1')}</a>` : ''}
+        <button type="button" class="bouton bouton-or bouton-large" id="f-coller-complet">${ICONES.coller}${t('reviews.step2')}</button>
+        <p class="aide">${t('reviews.howToCopy')}</p>
+      </div>` : avisExistant?.lien ? `<p class="aide"><a class="lien-avis" href="${esc(avisExistant.lien)}" target="_blank" rel="noopener">${t('reviews.openFull')}</a></p>` : ''}
       <label class="champ"><span>${t('reviews.textLabel')}</span>
         <textarea id="f-texte" placeholder="${t('reviews.textPlaceholder')}">${esc(etat.texte)}</textarea></label>
       <div class="rangee">
@@ -139,6 +145,17 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
       const n = +b.dataset.etoile; etat.etoiles = etat.etoiles === n ? null : n; dessiner();
     }));
     $('#f-ecrire')?.addEventListener('click', () => ecrire());
+    $('#f-coller-complet')?.addEventListener('click', async () => {
+      let txt = '';
+      try { txt = await navigator.clipboard.readText(); } catch { /* refusé */ }
+      const n = nettoyerAvis(txt);
+      if (!n.texte || n.texte.length < 5) { toast(t('reviews.pasteManual')); $('#f-texte').focus(); return; }
+      etat.texte = n.texte;
+      avisExistant.texte = n.texte;
+      D.majTexteAvis(avisExistant.id, n.texte).catch(() => {});
+      toast(t('reviews.fullAdded'));
+      dessiner();
+    });
     $('#f-deja')?.addEventListener('click', async () => {
       try { await D.marquerFait(avisExistant.id, ''); toast(t('reviews.doneToast')); fermer(); } catch (e) { etat.erreur = messageErreur(e); dessiner(); }
     });
