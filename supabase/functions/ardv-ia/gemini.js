@@ -1,15 +1,21 @@
 // Petites fonctions pures pour parler à Gemini. Partagées par la fonction serveur (Deno) et les tests (Node).
 
-// Alias tenu à jour par Google : sert de secours quand le modèle choisi a été arrêté (404).
-export const MODELE_SECOURS = 'gemini-flash-latest';
+// Alias tenus à jour par Google : secours quand le modèle choisi est arrêté (404) ou surchargé (503).
+export const MODELES_SECOURS = ['gemini-flash-latest', 'gemini-flash-lite-latest'];
 
 export function modelesAEssayer(modeleChoisi) {
   const choisi = String(modeleChoisi || '').trim();
-  return [...new Set([choisi, MODELE_SECOURS].filter(Boolean))];
+  return [...new Set([choisi, ...MODELES_SECOURS].filter(Boolean))];
 }
 
-// 404 : modèle inconnu → essayer le suivant. 400 : réglage refusé → réessayer sans réglage de réflexion.
-export const doitReessayer = status => (status === 404 ? 'modele' : status === 400 ? 'sans-reflexion' : null);
+// 404 : modèle inconnu → suivant. 400 : réglage refusé → sans réglage de réflexion.
+// 500/503 : surchargé → réessayer une fois après une pause, puis modèle suivant.
+export function doitReessayer(status) {
+  if (status === 404) return 'modele';
+  if (status === 400) return 'sans-reflexion';
+  if (status === 500 || status === 503) return 'surcharge';
+  return null;
+}
 
 export function corpsGemini({ system, user, image }, { reflexion = true } = {}) {
   const parts = [{ text: user }];
@@ -34,7 +40,7 @@ export function lireTexteGemini(json) {
   return texte;
 }
 
-export const mapGeminiError = status => (status === 429 ? 'quota' : 'ia');
+export const mapGeminiError = status => (status === 429 || status === 503 ? 'quota' : 'ia');
 
 export function estAutorise(email, liste) {
   const e = String(email || '').trim().toLowerCase();

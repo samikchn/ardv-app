@@ -4,6 +4,10 @@ import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise, modelesAEssa
 
 const LISTE = ['maman@example.com', 'sami@example.com'];
 
+test('surcharge Gemini → message « très demandée »', () => {
+  assert.equal(mapGeminiError(503), 'quota');
+});
+
 test('erreurs Gemini', () => {
   assert.equal(mapGeminiError(429), 'quota');
   assert.equal(mapGeminiError(500), 'ia');
@@ -45,16 +49,18 @@ test('revue relue : réponse coupée refusée', () => {
 });
 
 test('modèle arrêté → repli sur gemini-flash-latest', () => {
-  assert.deepEqual(modelesAEssayer('gemini-2.5-flash'), ['gemini-2.5-flash', 'gemini-flash-latest']);
-  assert.deepEqual(modelesAEssayer(''), ['gemini-flash-latest']);
-  assert.deepEqual(modelesAEssayer(' gemini-flash-latest '), ['gemini-flash-latest']);
+  assert.deepEqual(modelesAEssayer('gemini-2.5-flash'), ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest']);
+  assert.deepEqual(modelesAEssayer(''), ['gemini-flash-latest', 'gemini-flash-lite-latest']);
+  assert.deepEqual(modelesAEssayer(' gemini-flash-latest '), ['gemini-flash-latest', 'gemini-flash-lite-latest']);
 });
 
 test('réessayer : 404 → modèle suivant, 400 → sans réglage de réflexion, 429 → non', () => {
   assert.equal(doitReessayer(404), 'modele');
   assert.equal(doitReessayer(400), 'sans-reflexion');
   assert.equal(doitReessayer(429), null);
-  assert.equal(doitReessayer(500), null);
+  assert.equal(doitReessayer(503), 'surcharge');
+  assert.equal(doitReessayer(500), 'surcharge');
+  assert.equal(doitReessayer(403), null);
 });
 
 test('corps sans réglage de réflexion', () => {

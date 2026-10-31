@@ -39,8 +39,10 @@ Deno.serve(async (req) => {
   // Essaie le modèle choisi, puis l'alias de secours ; sans réglage de réflexion si Google le refuse.
   try {
     let dernier = 502;
+    const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
     for (const modele of MODELES) {
-      for (const reflexion of [true, false]) {
+      let surchargeDejaVue = false;
+      for (let reflexion = true; ; ) {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modele}:generateContent`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": CLE },
@@ -50,8 +52,9 @@ Deno.serve(async (req) => {
         console.log(`Gemini a répondu ${r.status} (modèle ${modele}, réflexion ${reflexion ? "réglée" : "par défaut"})`);
         dernier = r.status;
         const suite = doitReessayer(r.status);
-        if (suite === "sans-reflexion" && reflexion) continue;
-        if (suite === "modele" || suite === "sans-reflexion") break;
+        if (suite === "sans-reflexion" && reflexion) { reflexion = false; continue; }
+        if (suite === "surcharge" && !surchargeDejaVue) { surchargeDejaVue = true; await pause(1500); continue; }
+        if (suite) break;
         return json({ erreur: mapGeminiError(r.status) }, r.status === 429 ? 429 : 502);
       }
     }
