@@ -113,7 +113,8 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
           <button type="button" class="bouton bouton-trait" id="f-autre">${ICONES.autre}${t('reviews.other')}</button>
         </div>
         <button type="button" class="bouton bouton-encre bouton-large" id="f-fait">${t('reviews.done')}</button>`
-        : `<button type="button" class="bouton bouton-or bouton-large" id="f-ecrire" ${statut === 'charge' ? 'disabled' : ''}>${ICONES.plume}${t('reviews.write')}</button>`}
+        : `<button type="button" class="bouton bouton-or bouton-large" id="f-ecrire" ${statut === 'charge' ? 'disabled' : ''}>${ICONES.plume}${t('reviews.write')}</button>
+          ${avisExistant ? `<button type="button" class="bouton bouton-trait bouton-large" id="f-deja" style="margin-top:10px">${t('reviews.alreadyAnswered')}</button>` : ''}`}
     </article>`;
     brancher();
   };
@@ -138,6 +139,9 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
       const n = +b.dataset.etoile; etat.etoiles = etat.etoiles === n ? null : n; dessiner();
     }));
     $('#f-ecrire')?.addEventListener('click', () => ecrire());
+    $('#f-deja')?.addEventListener('click', async () => {
+      try { await D.marquerFait(avisExistant.id, ''); toast(t('reviews.doneToast')); fermer(); } catch (e) { etat.erreur = messageErreur(e); dessiner(); }
+    });
     $('#f-autre')?.addEventListener('click', () => { etat.variante += 1; ecrire(); });
     $('#f-copier')?.addEventListener('click', async () => {
       const ok = await copier(etat.reponse);

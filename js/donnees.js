@@ -76,8 +76,8 @@ export async function listerAvis() {
   }
   const c = await client();
   const [a, s] = await Promise.all([
-    c.from('ardv_avis').select('*').eq('statut', 'a_repondre').order('cree', { ascending: false }),
-    c.from('ardv_avis').select('*').eq('statut', 'fait').order('cree', { ascending: false }).limit(10),
+    c.from('ardv_avis').select('*').eq('statut', 'a_repondre').neq('source', 'ignore').order('cree', { ascending: false }),
+    c.from('ardv_avis').select('*').eq('statut', 'fait').neq('source', 'ignore').order('cree', { ascending: false }).limit(10),
   ]);
   if (a.error) throw versReseau(a.error);
   if (s.error) throw versReseau(s.error);
@@ -98,11 +98,15 @@ export async function marquerFait(avisId, texteReponse) {
   if (estDemo()) {
     const d = demoLire();
     const a = d.avis.find(x => x.id === avisId); if (a) a.statut = 'fait';
-    d.reponses.unshift({ texte: texteReponse, cree: new Date().toISOString() }); demoEcrire(d); return;
+    if (texteReponse) d.reponses.unshift({ texte: texteReponse, cree: new Date().toISOString() });
+    demoEcrire(d); return;
   }
   const c = await client();
-  const r1 = await c.from('ardv_reponses').insert({ avis_id: avisId, texte: texteReponse });
-  if (r1.error) throw versReseau(r1.error);
+  // Réponse vide = « j'y ai déjà répondu » ailleurs : on classe seulement le ticket
+  if (texteReponse) {
+    const r1 = await c.from('ardv_reponses').insert({ avis_id: avisId, texte: texteReponse });
+    if (r1.error) throw versReseau(r1.error);
+  }
   const r2 = await c.from('ardv_avis').update({ statut: 'fait' }).eq('id', avisId);
   if (r2.error) throw versReseau(r2.error);
 }
