@@ -47,12 +47,8 @@ export async function sessionActive() {
     return !!data.session;
   } catch (e) { throw versReseau(e); }
 }
-export async function envoyerCode(email) {
-  const { error } = await (await client()).auth.signInWithOtp({ email: email.trim().toLowerCase(), options: { shouldCreateUser: false } });
-  if (error) throw versReseau(error);
-}
-export async function verifierCode(email, code) {
-  const { error } = await (await client()).auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: 'email' });
+export async function connexion(email, motDePasse) {
+  const { error } = await (await client()).auth.signInWithPassword({ email: email.trim().toLowerCase(), password: motDePasse });
   if (error) throw versReseau(error);
 }
 export async function deconnexion() { if (!estDemo()) await (await client()).auth.signOut(); }
