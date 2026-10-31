@@ -4,7 +4,7 @@
 // Secrets : GEMINI_API_KEY, GEMINI_MODEL, EMAILS_AUTORISES (séparés par des virgules).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise } from "./gemini.js";
+import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise, modelesAEssayer, doitReessayer } from "./gemini.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +16,7 @@ const json = (data: unknown, status = 200) =>
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
 const AUTORISES = (Deno.env.get("EMAILS_AUTORISES") || "").split(",").filter(Boolean);
-const MODELE = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+const MODELES = modelesAEssayer(Deno.env.get("GEMINI_MODEL"));
 const CLE = Deno.env.get("GEMINI_API_KEY") || "";
 const TAILLE_MAX = 6_000_000; // ~ une capture d'écran redimensionnée
 
@@ -36,18 +36,26 @@ Deno.serve(async (req) => {
   try { demande = JSON.parse(brut); } catch { return json({ erreur: "ia" }, 400); }
   if (typeof demande.system !== "string" || typeof demande.user !== "string") return json({ erreur: "ia" }, 400);
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELE}:generateContent`;
+  // Essaie le modèle choisi, puis l'alias de secours ; sans réglage de réflexion si Google le refuse.
   try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": CLE },
-      body: JSON.stringify(corpsGemini(demande as { system: string; user: string })),
-    });
-    if (!r.ok) {
-      console.log(`Gemini a répondu ${r.status}`);
-      return json({ erreur: mapGeminiError(r.status) }, r.status === 429 ? 429 : 502);
+    let dernier = 502;
+    for (const modele of MODELES) {
+      for (const reflexion of [true, false]) {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modele}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": CLE },
+          body: JSON.stringify(corpsGemini(demande as { system: string; user: string }, { reflexion })),
+        });
+        if (r.ok) return json({ texte: lireTexteGemini(await r.json()) });
+        console.log(`Gemini a répondu ${r.status} (modèle ${modele}, réflexion ${reflexion ? "réglée" : "par défaut"})`);
+        dernier = r.status;
+        const suite = doitReessayer(r.status);
+        if (suite === "sans-reflexion" && reflexion) continue;
+        if (suite === "modele" || suite === "sans-reflexion") break;
+        return json({ erreur: mapGeminiError(r.status) }, r.status === 429 ? 429 : 502);
+      }
     }
-    return json({ texte: lireTexteGemini(await r.json()) });
+    return json({ erreur: mapGeminiError(dernier) }, 502);
   } catch (e) {
     console.log("appel Gemini impossible :", (e as Error).message);
     return json({ erreur: "ia" }, 502);

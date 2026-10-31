@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise } from '../supabase/functions/ardv-ia/gemini.js';
+import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise, modelesAEssayer, doitReessayer } from '../supabase/functions/ardv-ia/gemini.js';
 
 const LISTE = ['maman@example.com', 'sami@example.com'];
 
@@ -42,4 +42,22 @@ test('revue relue : pas de réflexion qui mange la réponse', () => {
 
 test('revue relue : réponse coupée refusée', () => {
   assert.throws(() => lireTexteGemini({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'Merci pour' }] } }] }));
+});
+
+test('modèle arrêté → repli sur gemini-flash-latest', () => {
+  assert.deepEqual(modelesAEssayer('gemini-2.5-flash'), ['gemini-2.5-flash', 'gemini-flash-latest']);
+  assert.deepEqual(modelesAEssayer(''), ['gemini-flash-latest']);
+  assert.deepEqual(modelesAEssayer(' gemini-flash-latest '), ['gemini-flash-latest']);
+});
+
+test('réessayer : 404 → modèle suivant, 400 → sans réglage de réflexion, 429 → non', () => {
+  assert.equal(doitReessayer(404), 'modele');
+  assert.equal(doitReessayer(400), 'sans-reflexion');
+  assert.equal(doitReessayer(429), null);
+  assert.equal(doitReessayer(500), null);
+});
+
+test('corps sans réglage de réflexion', () => {
+  const c = corpsGemini({ system: 'S', user: 'U' }, { reflexion: false });
+  assert.equal(c.generationConfig.thinkingConfig, undefined);
 });
