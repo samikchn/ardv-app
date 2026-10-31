@@ -4,6 +4,7 @@ import { esc, etoiles, numero, toast, messageErreur, copier, ICONES } from './ui
 import { nettoyerAvis, buildReviewPrompt, debutsRecents } from './avis-prompt.js';
 import { sauverBrouillon, lireBrouillon, effacerBrouillon } from './brouillon.js';
 import * as D from './donnees.js';
+import { lireImage } from './images.js';
 
 function carteTicket(a, servi = false) {
   return `<article class="ticket${servi ? ' servi' : ''}" ${servi ? '' : `role="button" tabindex="0" data-avis="${esc(a.id)}"`}>
@@ -43,17 +44,6 @@ export async function afficherAvis(main) {
     afficherAvis.ouvert = true;
     ouvrirTicket(null, () => afficherAvis(main), { texte: p.get('texte') || '', ecrire: p.has('ecrire') });
   }
-}
-
-// Réduit une capture à 1280 px max et renvoie { mime, base64, url }
-async function lireImage(fichier) {
-  const bitmap = await createImageBitmap(fichier);
-  const echelle = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
-  const toile = document.createElement('canvas');
-  toile.width = Math.round(bitmap.width * echelle); toile.height = Math.round(bitmap.height * echelle);
-  toile.getContext('2d').drawImage(bitmap, 0, 0, toile.width, toile.height);
-  const url = toile.toDataURL('image/jpeg', 0.85);
-  return { mime: 'image/jpeg', base64: url.split(',')[1], url };
 }
 
 function ouvrirTicket(avisExistant, apresFermeture, test = {}) {

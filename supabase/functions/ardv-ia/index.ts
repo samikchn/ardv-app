@@ -4,7 +4,7 @@
 // Secrets : GEMINI_API_KEY, GEMINI_MODEL, EMAILS_AUTORISES (séparés par des virgules), GROQ_API_KEY (secours, facultatif).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise, modelesAEssayer, doitReessayer } from "./gemini.js";
+import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise, modelesAEssayer, doitReessayer, imagesDe } from "./gemini.js";
 import { corpsGroq, lireTexteGroq, modelesGroq, ordreFournisseurs } from "./groq.js";
 
 const CORS = {
@@ -23,7 +23,7 @@ const CLE_GROQ = Deno.env.get("GROQ_API_KEY") || "";
 const BUDGET_MS = 45_000;      // Supabase coupe vers 2 min : on répond toujours bien avant
 const APPEL_MAX_MS = 15_000;   // un fournisseur qui ne répond pas en 15 s est considéré surchargé
 const RESERVE_GROQ_MS = 12_000;
-const TAILLE_MAX = 6_000_000; // ~ une capture d'écran redimensionnée
+const TAILLE_MAX = 8_000_000; // ~ 4 photos redimensionnées
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
   const brut = await req.text();
   if (brut.length > TAILLE_MAX) return json({ erreur: "ia" }, 413);
-  let demande: { system?: string; user?: string; image?: { mime: string; base64: string } };
+  let demande: { system?: string; user?: string; image?: { mime: string; base64: string }; images?: { mime: string; base64: string }[] };
   try { demande = JSON.parse(brut); } catch { return json({ erreur: "ia" }, 400); }
   if (typeof demande.system !== "string" || typeof demande.user !== "string") return json({ erreur: "ia" }, 400);
 
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
             { "Content-Type": "application/json", "x-goog-api-key": CLE },
             corpsGemini(demande as { system: string; user: string }, { reflexion }), reserve);
           if (!r) break;
-          if (r.ok) { try { return json({ texte: lireTexteGemini(await r.json()) }); } catch (e) { console.log((e as Error).message); break; } }
+          if (r.ok) { try { const texte = lireTexteGemini(await r.json()); console.log(`réponse : Gemini ${modele}`); return json({ texte }); } catch (e) { console.log((e as Error).message); break; } }
           console.log(`Gemini a répondu ${r.status} (modèle ${modele})`);
           dernier = r.status;
           if (doitReessayer(r.status) === "sans-reflexion" && reflexion) { reflexion = false; continue; }
@@ -75,12 +75,12 @@ Deno.serve(async (req) => {
         if (dernier === 429) break; // quota du jour épuisé : inutile d'essayer les autres modèles Gemini
       }
     } else {
-      for (const modele of modelesGroq(!!demande.image)) {
+      for (const modele of modelesGroq(imagesDe(demande).length > 0)) {
         const r = await appel("https://api.groq.com/openai/v1/chat/completions",
           { "Content-Type": "application/json", Authorization: `Bearer ${CLE_GROQ}` },
           corpsGroq(demande as { system: string; user: string }, modele), 0);
         if (!r) break;
-        if (r.ok) { try { return json({ texte: lireTexteGroq(await r.json()) }); } catch (e) { console.log((e as Error).message); continue; } }
+        if (r.ok) { try { const texte = lireTexteGroq(await r.json()); console.log(`réponse : Groq ${modele}`); return json({ texte }); } catch (e) { console.log((e as Error).message); continue; } }
         console.log(`Groq a répondu ${r.status} (modèle ${modele})`);
         dernier = r.status;
       }

@@ -30,3 +30,8 @@ test('ordre : Gemini puis Groq seulement si la clé Groq existe', () => {
   assert.deepEqual(ordreFournisseurs({ gemini: 'k', groq: 'g' }), ['gemini', 'groq']);
   assert.deepEqual(ordreFournisseurs({ gemini: '', groq: 'g' }), ['groq']);
 });
+
+test('Groq : plusieurs photos', () => {
+  const c = corpsGroq({ system: 'S', user: 'U', images: [{ mime: 'image/jpeg', base64: 'A' }, { mime: 'image/jpeg', base64: 'B' }] }, 'x');
+  assert.equal(c.messages[1].content.length, 3);
+});

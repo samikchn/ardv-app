@@ -67,3 +67,9 @@ test('corps sans réglage de réflexion', () => {
   const c = corpsGemini({ system: 'S', user: 'U' }, { reflexion: false });
   assert.equal(c.generationConfig.thinkingConfig, undefined);
 });
+
+test('plusieurs photos (posts)', () => {
+  const c = corpsGemini({ system: 'S', user: 'U', images: [{ mime: 'image/jpeg', base64: 'A' }, { mime: 'image/png', base64: 'B' }] });
+  assert.equal(c.contents[0].parts.length, 3);
+  assert.equal(c.contents[0].parts[2].inline_data.mime_type, 'image/png');
+});

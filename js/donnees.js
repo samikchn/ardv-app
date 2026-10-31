@@ -121,6 +121,63 @@ export async function chargerReponsesRecentes() {
   return data.map(x => x.texte);
 }
 
+/* ---------- Posts ---------- */
+// post : { id?, idee, textes: {google, instagram, facebook, nomFichier}, photos: [chemins] , rappel: ISO|null, statut }
+export async function listerPosts() {
+  if (estDemo()) {
+    const d = demoLire();
+    return (d.posts || []).sort((a, b) => b.numero - a.numero);
+  }
+  const { data, error } = await (await client()).from('ardv_posts').select('*').order('cree', { ascending: false }).limit(40);
+  if (error) throw versReseau(error);
+  return data;
+}
+export async function envoyerPhotos(photos) {
+  // photos : [{ blob, url }] → chemins dans l'espace privé (en démo : les petites images elles-mêmes)
+  if (estDemo()) return photos.map(p => p.url);
+  const c = await client();
+  const chemins = [];
+  for (const p of photos) {
+    const chemin = `posts/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const { error } = await c.storage.from('ardv-photos').upload(chemin, p.blob, { contentType: 'image/jpeg' });
+    if (error) throw versReseau(error);
+    chemins.push(chemin);
+  }
+  return chemins;
+}
+export async function urlsPhotos(chemins = []) {
+  if (estDemo() || !chemins.length) return chemins;
+  const { data, error } = await (await client()).storage.from('ardv-photos').createSignedUrls(chemins, 3600);
+  if (error) throw versReseau(error);
+  return data.map(x => x.signedUrl);
+}
+export async function enregistrerPost(post) {
+  const ligne = { idee: post.idee || '', textes: post.textes || {}, photos: post.photos || [], rappel: post.rappel || null, statut: post.statut || 'prevu', rappel_envoye: false };
+  if (estDemo()) {
+    const d = demoLire(); d.posts = d.posts || [];
+    if (post.id) Object.assign(d.posts.find(p => p.id === post.id) || {}, ligne);
+    else { d.numeroPost = (d.numeroPost || 0) + 1; d.posts.push({ ...ligne, id: 'p' + d.numeroPost, numero: d.numeroPost, cree: new Date().toISOString() }); }
+    demoEcrire(d); return;
+  }
+  const c = await client();
+  const r = post.id ? await c.from('ardv_posts').update(ligne).eq('id', post.id) : await c.from('ardv_posts').insert(ligne);
+  if (r.error) throw versReseau(r.error);
+}
+export async function marquerPublie(id) {
+  if (estDemo()) { const d = demoLire(); const p = (d.posts || []).find(x => x.id === id); if (p) p.statut = 'publie'; demoEcrire(d); return; }
+  const { error } = await (await client()).from('ardv_posts').update({ statut: 'publie' }).eq('id', id);
+  if (error) throw versReseau(error);
+}
+
+/* ---------- Notifications ---------- */
+export async function enregistrerAbonnement(abonnement) {
+  if (estDemo()) return;
+  const c = await client();
+  const { data } = await c.auth.getUser();
+  const { error } = await c.from('ardv_push').upsert({ endpoint: abonnement.endpoint, email: data.user?.email || '', abonnement });
+  if (error) throw versReseau(error);
+}
+
 /* ---------- IA ---------- */
 // Lève Error('quota' | 'ia' | 'connexion' | 'interdit' | 'reseau')
 export async function appelIA(demande) {
@@ -128,6 +185,12 @@ export async function appelIA(demande) {
     await pause(700);
     const erreur = params.get('erreur');
     if (erreur) throw new Error(erreur);
+    if (/"instagram"/.test(demande.system)) return JSON.stringify({
+      google: "Une douceur maison vous attend aujourd'hui au Café Au Rendez-Vous, juste derrière la Basilique Cathédrale de Saint-Denis. Notre crème brûlée est préparée chaque matin, avec sa fine couche de sucre caramélisé qui craque sous la cuillère. Venez la goûter en terrasse, au calme de l'Allée des 6 Chapelles. On vous attend avec le sourire !",
+      instagram: "Le petit craquement du caramel… 😍 Notre crème brûlée maison vous attend aujourd'hui, juste derrière la Basilique ✨\n\n#crêperiesaintdenis #saintdenis #basiliquesaintdenis #cremebrulee #faitmaison #galettesbretonnes #glacierartisanal #paris93",
+      facebook: "Crème brûlée maison du jour 😋 Préparée ce matin, à savourer en terrasse derrière la Basilique de Saint-Denis. À tout à l'heure !",
+      nomFichier: 'creme-brulee-maison-creperie-saint-denis.jpg',
+    });
     const fr = !/\b(the|and|was|good|great|food)\b/i.test(demande.user);
     return fr
       ? "Merci beaucoup pour ce joli message ! 😊 C'est toujours un bonheur de vous accueillir dans notre petite crêperie, juste derrière la Basilique de Saint-Denis. On vous attend vite pour une nouvelle galette !\n\nL'équipe du Café Au Rendez-Vous\naurendezvous-saintdenis.fr"

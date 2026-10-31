@@ -1,14 +1,18 @@
 // Secours Groq (API au format OpenAI), utilisé quand Gemini est surchargé. Pur : testé avec node --test.
 // Plusieurs modèles par ordre de préférence : Groq en retire régulièrement, on passe au suivant.
 
+import { imagesDe } from './gemini.js';
+
 const TEXTE = ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'qwen/qwen3-32b'];
 const IMAGE = ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct'];
 
 export const modelesGroq = avecImage => (avecImage ? IMAGE : TEXTE);
 
-export function corpsGroq({ system, user, image }, modele) {
-  const contenu = image && image.base64
-    ? [{ type: 'text', text: user }, { type: 'image_url', image_url: { url: `data:${image.mime || 'image/jpeg'};base64,${image.base64}` } }]
+export function corpsGroq(demande, modele) {
+  const { system, user } = demande;
+  const images = imagesDe(demande);
+  const contenu = images.length
+    ? [{ type: 'text', text: user }, ...images.map(i => ({ type: 'image_url', image_url: { url: `data:${i.mime || 'image/jpeg'};base64,${i.base64}` } }))]
     : user;
   return {
     model: modele,

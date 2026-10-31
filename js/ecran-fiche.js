@@ -3,8 +3,8 @@ import { t } from './i18n.js';
 import { esc, toast, messageErreur } from './ui.js';
 import * as D from './donnees.js';
 
-const CHAMPS = ['nom', 'adresse', 'situation', 'site', 'telephone', 'horaires', 'signature', 'devise'];
-const LISTES = ['specialites', 'equipe', 'motsCles'];
+const CHAMPS = ['nom', 'adresse', 'situation', 'site', 'telephone', 'horaires', 'signature', 'devise', 'classement'];
+const LISTES = ['specialites', 'equipe', 'motsCles', 'motsClesPosts'];
 
 export async function afficherFiche(main) {
   let profil;

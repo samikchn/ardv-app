@@ -17,9 +17,13 @@ export function doitReessayer(status) {
   return null;
 }
 
-export function corpsGemini({ system, user, image }, { reflexion = true } = {}) {
+// Une capture (avis) ou plusieurs photos (posts)
+export const imagesDe = ({ image, images }) => [...(image ? [image] : []), ...(Array.isArray(images) ? images : [])].filter(i => i && i.base64).slice(0, 4);
+
+export function corpsGemini(demande, { reflexion = true } = {}) {
+  const { system, user } = demande;
   const parts = [{ text: user }];
-  if (image && image.base64) parts.push({ inline_data: { mime_type: image.mime || 'image/jpeg', data: image.base64 } });
+  for (const i of imagesDe(demande)) parts.push({ inline_data: { mime_type: i.mime || 'image/jpeg', data: i.base64 } });
   const generationConfig = { temperature: 0.9, maxOutputTokens: 2048 };
   // Pas de « réflexion » : elle mangerait les jetons de la réponse (réponse coupée ou vide)
   if (reflexion) generationConfig.thinkingConfig = { thinkingBudget: 0 };

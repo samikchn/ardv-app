@@ -3,6 +3,8 @@ import { t, setLang, getLang, onLangChange } from './i18n.js';
 import { estDemo, sessionActive } from './donnees.js';
 import { afficherAvis } from './ecran-avis.js';
 import { afficherFiche } from './ecran-fiche.js';
+import { afficherPosts } from './ecran-posts.js';
+import { rafraichirRappels } from './rappels.js';
 import { afficherConnexion } from './connexion.js';
 
 const main = document.getElementById('ecran');
@@ -35,6 +37,7 @@ async function afficherEcran(nom) {
   if (!(await sessionActive())) { document.querySelector('.onglets').hidden = true; afficherConnexion(main, () => { document.querySelector('.onglets').hidden = false; afficher(ongletCourant); }); return; }
   if (nom === 'avis') await afficherAvis(main);
   else if (nom === 'fiche') await afficherFiche(main);
+  else if (nom === 'posts') await afficherPosts(main);
   else bientot();
   window.scrollTo(0, 0);
 }
@@ -44,6 +47,10 @@ onLangChange(() => { traduirePage(); afficher(ongletCourant); });
 onglets.forEach(b => b.addEventListener('click', () => afficher(b.dataset.onglet)));
 
 document.getElementById('bandeau-demo').hidden = !estDemo();
+// Ouverture depuis une notification de rappel : ?onglet=posts
+const ongletDemande = new URLSearchParams(location.search).get('onglet');
+if (ongletDemande) ongletCourant = ongletDemande;
+
 traduirePage();
 afficher(ongletCourant).then(() => {
   // Mode démo : mesure pour les tests (largeur de l'écran / largeur du contenu)
@@ -54,4 +61,4 @@ afficher(ongletCourant).then(() => {
   }
 });
 
-if ('serviceWorker' in navigator && !estDemo()) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && !estDemo()) navigator.serviceWorker.register('sw.js').then(() => rafraichirRappels()).catch(() => {});

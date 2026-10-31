@@ -12,6 +12,8 @@ export const DEFAULT_PROFILE = {
   signature: "L'équipe du Café Au Rendez-Vous",
   motsCles: ['crêperie', 'Saint-Denis', 'Basilique de Saint-Denis', 'Café Au Rendez-Vous'],
   devise: "La satisfaction du client d'abord, le commerce ensuite.",
+  classement: '4,9/5 sur Google avec plus de 760 avis',
+  motsClesPosts: ['crêperie Saint-Denis', 'Basilique Cathédrale de Saint-Denis', 'glacier artisanal Saint-Denis', 'galettes bretonnes faites maison', 'Allée des 6 Chapelles', 'restaurant près de la Basilique', 'Stade de France', 'région parisienne'],
 };
 
 const liste = v => (Array.isArray(v) ? v.filter(Boolean).join(', ') : v || '');
@@ -31,6 +33,7 @@ export function contexteRestaurant(profil = {}) {
     ['Équipe', liste(p.equipe)],
     ['Mots-clés locaux', liste(p.motsCles)],
     ['Devise', p.devise],
+    ['Classement', p.classement],
   ];
   return lignes.filter(([, v]) => v).map(([k, v]) => `${k} : ${sansEmail(v)}`).join('\n');
 }
