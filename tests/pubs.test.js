@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { voyant, ligneChiffres, buildCoachPrompt, euros, jourLocal } from '../js/pubs.js';
-import { DEFAULT_PROFILE } from '../js/profil.js';
+import { voyant, ligneChiffres, questionPourClaude, euros, jourLocal } from '../js/pubs.js';
 
 const C = { nom: 'Weekend Diner ARDV', statut: 'ENABLED', etat: 'LIMITED', budget: 5,
   hier: { clics: 12, impressions: 340, cout: 3.4, conversions: 1, appels: 1 }, semaine: { clics: 60, cout: 21.5, conversions: 4, appels: 2 } };
@@ -25,15 +24,17 @@ test('ligne de chiffres simple', () => {
   assert.equal(ligneChiffres({ clics: 2, cout: 1, appels: 3 }, 'en'), '2 clicks · €1.00 · 3 calls');
 });
 
-test('coach : ses règles, les vrais chiffres, jamais de stratégie automatique', () => {
-  const p = buildCoachPrompt({ campagnes: [C], termes: [{ terme: 'glace artisanale près de moi', clics: 5, cout: 2 }], question: 'Pourquoi peu de clients le soir ?', profil: DEFAULT_PROFILE, langue: 'fr' });
-  assert.match(p.system, /manual CPC/i);
-  assert.match(p.system, /never.*(Smart|automatic)/i);
-  assert.match(p.system, /exact match/i);
-  assert.match(p.user, /Weekend Diner ARDV/);
-  assert.match(p.user, /glace artisanale près de moi/);
-  assert.match(p.user, /Pourquoi peu de clients le soir/);
-  assert.match(p.system, /French/);
+test('question pour Claude : vrais chiffres, termes, sa question, en français', () => {
+  const q = questionPourClaude({ campagnes: [C], termes: [{ terme: 'glace artisanale près de moi', clics: 5, cout: 2 }], question: 'Pourquoi peu de clients le soir ?', langue: 'fr' });
+  assert.match(q, /Weekend Diner ARDV/);
+  assert.match(q, /12 clics · 3,40 € · 1 appel/);
+  assert.match(q, /glace artisanale près de moi/);
+  assert.match(q, /Pourquoi peu de clients le soir \?/);
+  assert.match(q, /Google Ads/);
+});
+
+test('question pour Claude sans question : demande un point simple', () => {
+  assert.match(questionPourClaude({ campagnes: [C], langue: 'fr' }), /que dois-je/i);
 });
 
 test('revue 2 : jour local (pas UTC) pour le résumé du coach', () => {

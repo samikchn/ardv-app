@@ -29,6 +29,15 @@ export async function copier(texte) {
   return ok;
 }
 
+// Bloc « Une modification ? » commun à tous les textes générés par l'IA
+export function blocModifier() {
+  return `<div class="bloc-modifier">
+    <label class="champ"><span>${t('ai.change')}</span>
+      <textarea id="ia-consigne" rows="2" placeholder="${t('ai.changePlaceholder')}"></textarea></label>
+    <button type="button" class="bouton bouton-trait bouton-large" id="ia-modifier">${ICONES.plume}${t('ai.apply')}</button>
+  </div>`;
+}
+
 export const ICONES = {
   coller: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="1.5"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg>',
   photo: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8.5 6 10 3.5h4L15.5 6"/></svg>',

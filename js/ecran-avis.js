@@ -1,10 +1,11 @@
 // Écran Avis : la pile de tickets, et le ticket ouvert (coller → réponse → Copier / Autre version / Fait).
 import { t } from './i18n.js';
-import { esc, etoiles, numero, toast, messageErreur, copier, ICONES } from './ui.js';
+import { esc, etoiles, numero, toast, messageErreur, copier, ICONES, blocModifier } from './ui.js';
+import { avecModification } from './affiner.js';
 import { nettoyerAvis, buildReviewPrompt, debutsRecents, estCoupe } from './avis-prompt.js';
 import { sauverBrouillon, lireBrouillon, effacerBrouillon } from './brouillon.js';
 import * as D from './donnees.js';
-import { lireImage } from './images.js';
+import { lireImage, imagesDuCollage, imageDuPressePapiers } from './images.js';
 
 function carteTicket(a, servi = false) {
   return `<article class="ticket${servi ? ' servi' : ''}" ${servi ? '' : `role="button" tabindex="0" data-avis="${esc(a.id)}"`}>
@@ -79,6 +80,13 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
   };
   const echap = e => { if (e.key === 'Escape') fermer(); };
   document.addEventListener('keydown', echap);
+  feuille.addEventListener('paste', async e => {
+    const [f] = imagesDuCollage(e);
+    if (!f) return; // texte collé : comportement normal
+    e.preventDefault();
+    try { etat.image = await lireImage(f); } catch { etat.image = null; }
+    dessiner();
+  });
 
   const dessiner = (statut = '') => {
     const titre = avisExistant ? `${numero(avisExistant.numero)} · ${esc(avisExistant.auteur || t('reviews.anon'))}` : t('reviews.paste');
@@ -96,6 +104,7 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
       <div class="rangee">
         <button type="button" class="bouton bouton-trait" id="f-coller">${ICONES.coller}${t('reviews.pasteBtn')}</button>
         <label class="bouton bouton-trait" for="f-image">${ICONES.photo}${t('reviews.photoBtn')}</label>
+        <button type="button" class="bouton bouton-trait" id="f-coller-image">${ICONES.coller}${t('img.paste')}</button>
         <input type="file" id="f-image" accept="image/*" hidden>
       </div>
       ${etat.image ? `<div class="apercu-capture"><img src="${etat.image.url}" alt=""><span>${t('reviews.photoAdded')}</span><button type="button" class="bouton bouton-trait" id="f-retirer">${t('reviews.photoRemove')}</button></div>` : ''}
@@ -113,11 +122,12 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
       ${statut === 'charge' ? `<p class="chargement" role="status">${t('reviews.writing')}</p>` : ''}
       ${etat.reponse ? `
         <p class="reponse-titre">${t('reviews.answer')}</p>
-        <div class="reponse" id="f-reponse">${esc(etat.reponse)}</div>
+        <textarea class="reponse post-texte" id="f-reponse" rows="8">${esc(etat.reponse)}</textarea>
         <div class="rangee">
           <button type="button" class="bouton bouton-or" id="f-copier">${ICONES.copier}${t('reviews.copy')}</button>
           <button type="button" class="bouton bouton-trait" id="f-autre">${ICONES.autre}${t('reviews.other')}</button>
         </div>
+        ${blocModifier()}
         <button type="button" class="bouton bouton-encre bouton-large" id="f-fait">${t('reviews.done')}</button>`
         : `<button type="button" class="bouton bouton-or bouton-large" id="f-ecrire" ${statut === 'charge' ? 'disabled' : ''}>${ICONES.plume}${t('reviews.write')}</button>
           ${avisExistant ? `<button type="button" class="bouton bouton-trait bouton-large" id="f-deja" style="margin-top:10px">${t('reviews.alreadyAnswered')}</button>` : ''}`}
@@ -145,6 +155,18 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
       const n = +b.dataset.etoile; etat.etoiles = etat.etoiles === n ? null : n; dessiner();
     }));
     $('#f-ecrire')?.addEventListener('click', () => ecrire());
+    $('#f-reponse')?.addEventListener('input', e => { etat.reponse = e.target.value; sauverBrouillon('avis-reponse-' + cle, etat.reponse); });
+    $('#ia-modifier')?.addEventListener('click', () => {
+      const consigne = $('#ia-consigne').value.trim();
+      if (!consigne) { toast(t('ai.needChange')); $('#ia-consigne').focus(); return; }
+      ecrire(consigne);
+    });
+    $('#f-coller-image').addEventListener('click', async () => {
+      const f = await imageDuPressePapiers();
+      if (!f) { toast(t('img.nothing')); return; }
+      try { etat.image = await lireImage(f); } catch { etat.image = null; }
+      dessiner();
+    });
     $('#f-coller-complet')?.addEventListener('click', async () => {
       let txt = '';
       try { txt = await navigator.clipboard.readText(); } catch { /* refusé */ }
@@ -181,7 +203,7 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
     });
   };
 
-  const ecrire = async () => {
+  const ecrire = async (consigne = '') => {
     const n = nettoyerAvis(etat.texte);
     if (!etat.auteur && n.auteur) etat.auteur = n.auteur; // nom lu dans le texte collé
     const avis = { ...n, etoiles: etat.etoiles || n.etoiles, auteur: etat.auteur || n.auteur };
@@ -191,7 +213,7 @@ function ouvrirTicket(avisExistant, apresFermeture, test = {}) {
     dessiner('charge');
     try {
       const [profil, exemples, recentes] = await Promise.all([D.chargerProfil(), D.chargerExemples().catch(() => []), D.chargerReponsesRecentes().catch(() => [])]);
-      const demande = buildReviewPrompt({ avis, souvenir: etat.souvenir, profil, exemples, recentes: debutsRecents(recentes), variante: etat.variante, signerRafiza: etat.signerRafiza, avecCapture: !!etat.image });
+      const demande = avecModification(buildReviewPrompt({ avis, souvenir: etat.souvenir, profil, exemples, recentes: debutsRecents(recentes), variante: etat.variante, signerRafiza: etat.signerRafiza, avecCapture: !!etat.image }), etat.reponse, consigne);
       etat.reponse = await D.appelIA(etat.image ? { ...demande, image: { mime: etat.image.mime, base64: etat.image.base64 } } : demande);
       sauverBrouillon('avis-reponse-' + cle, etat.reponse);
       dessiner();

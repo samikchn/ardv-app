@@ -1,12 +1,13 @@
-// Écran Pubs : une carte par campagne (voyant + chiffres en mots simples), le résumé du coach du jour,
-// une question au coach, et un bouton vers Google Ads. Lecture seule : rien n'est modifié dans le compte Ads.
+// Écran Pubs : une carte par campagne (voyant + chiffres en mots simples), un bouton vers Google Ads,
+// et « Demander à Claude » : la question est préparée avec les vrais chiffres, puis ouverte dans son Claude habituel
+// (qui connaît tout son historique : bien meilleur qu'un coach sans contexte). Lecture seule : rien n'est modifié.
 import { t, getLang } from './i18n.js';
-import { esc, toast, messageErreur, ICONES } from './ui.js';
-import { voyant, ligneChiffres, buildCoachPrompt, euros, jourLocal } from './pubs.js';
-import { lireImage } from './images.js';
+import { esc, toast, messageErreur, copier, ICONES } from './ui.js';
+import { voyant, ligneChiffres, questionPourClaude, euros } from './pubs.js';
 import * as D from './donnees.js';
 
 const URL_ADS = 'https://ads.google.com/aw/campaigns';
+const URL_CLAUDE = 'https://claude.ai/new';
 const ilYa = iso => {
   const min = Math.round((Date.now() - new Date(iso)) / 60e3);
   if (min < 60) return t('ads.minutesAgo', { n: Math.max(1, min) });
@@ -25,7 +26,6 @@ export async function afficherPubs(main) {
     <p class="sous-titre">${pubs ? t('ads.updated', { quand: ilYa(pubs.recu) }) : t('ads.intro')}</p>
     ${erreur ? `<p class="erreur">${esc(erreur)}</p>` : ''}
     ${!pubs && !erreur ? `<p class="vide">${t('ads.empty')}</p>` : ''}
-    ${pubs ? `<article class="ticket coach"><div class="ticket-tete"><span class="ticket-nom">${t('ads.coach')}</span></div><p class="ticket-texte" id="coach-texte"><span class="chargement">${t('ads.coachWriting')}</span></p></article>` : ''}
     <ul class="pile">${campagnes.map(c => `<li><article class="ticket campagne">
       <div class="ticket-tete"><span class="voyant voyant-${voyant(c)}" aria-hidden="true"></span><span class="ticket-nom">${esc(c.nom)}</span></div>
       <p class="etat-campagne">${t('ads.state.' + voyant(c))}${c.budget ? ` · ${t('ads.budget', { b: euros(c.budget, langue) })}` : ''}</p>
@@ -34,39 +34,18 @@ export async function afficherPubs(main) {
     </article></li>`).join('')}</ul>
     <div class="action-fixe rangee-fixe">
       <a class="bouton bouton-trait bouton-sur-comptoir" href="${URL_ADS}" target="_blank" rel="noopener">${t('ads.open')}</a>
-      <button type="button" class="bouton bouton-or" id="demander-coach">${ICONES.plume}${t('ads.ask')}</button>
+      <button type="button" class="bouton bouton-or" id="demander-claude">${ICONES.plume}${t('ads.askClaude')}</button>
     </div>`;
 
-  main.querySelector('#demander-coach').addEventListener('click', () => ouvrirCoach(pubs));
-  // Résumé du jour : une seule demande à l'IA par jour (formule gratuite), réutilisée à chaque visite.
-  // Après un échec, on attend 30 min avant de redemander (pas d'appel à chaque ouverture).
-  if (pubs) {
-    const zone = main.querySelector('#coach-texte');
-    const jour = jourLocal();
-    try {
-      const deja = pubs.coach_date === jour && pubs.coach ? pubs.coach : await D.coachDuJour(jour);
-      if (deja) { zone.textContent = deja; return; }
-      let echec = 0;
-      try { echec = +sessionStorage.getItem('ardv-coach-echec') || 0; } catch { /* rien */ }
-      if (Date.now() - echec < 30 * 60e3) { zone.textContent = t('ads.coachLater'); return; }
-      const profil = await D.chargerProfil();
-      const texte = await D.appelIA(buildCoachPrompt({ campagnes, termes: pubs.donnees?.termes, profil, langue }));
-      zone.textContent = texte;
-      D.enregistrerCoach(pubs.id, texte, jour).catch(() => {});
-    } catch (e) {
-      zone.textContent = messageErreur(e);
-      try { sessionStorage.setItem('ardv-coach-echec', String(Date.now())); } catch { /* rien */ }
-    }
-  }
+  main.querySelector('#demander-claude').addEventListener('click', () => ouvrirQuestion(pubs));
 }
 
-function ouvrirCoach(pubs) {
-  const etat = { question: '', image: null, reponse: '', erreur: '' };
+function ouvrirQuestion(pubs) {
   const feuille = document.createElement('div');
   feuille.className = 'feuille';
   feuille.setAttribute('role', 'dialog');
   feuille.setAttribute('aria-modal', 'true');
-  feuille.setAttribute('aria-labelledby', 'c-titre');
+  feuille.setAttribute('aria-labelledby', 'q-titre');
   document.body.appendChild(feuille);
   document.body.style.overflow = 'hidden';
   const derriere = [document.getElementById('ecran'), document.querySelector('.onglets'), document.querySelector('.comptoir')];
@@ -75,32 +54,20 @@ function ouvrirCoach(pubs) {
   const echap = e => { if (e.key === 'Escape') fermer(); };
   document.addEventListener('keydown', echap);
 
-  const dessiner = (statut = '') => {
-    feuille.innerHTML = `<article class="ticket">
-      <div class="feuille-haut"><h2 id="c-titre">${t('ads.ask')}</h2><button type="button" class="fermer" aria-label="${t('reviews.close')}">×</button></div>
-      <label class="champ"><span>${t('ads.question')}</span>
-        <textarea id="c-question" rows="3" placeholder="${t('ads.questionPlaceholder')}">${esc(etat.question)}</textarea></label>
-      <div class="rangee"><label class="bouton bouton-trait" for="c-image">${ICONES.photo}${t('reviews.photoBtn')}</label><input type="file" id="c-image" accept="image/*" hidden></div>
-      ${etat.image ? `<div class="apercu-capture"><img src="${etat.image.url}" alt=""><span>${t('reviews.photoAdded')}</span></div>` : ''}
-      ${etat.erreur ? `<p class="erreur" role="alert">${esc(etat.erreur)}</p>` : ''}
-      ${statut === 'charge' ? `<p class="chargement" role="status">${t('ads.coachWriting')}</p>` : ''}
-      ${etat.reponse ? `<div class="reponse">${esc(etat.reponse)}</div>` : ''}
-      <button type="button" class="bouton bouton-or bouton-large" id="c-envoyer" ${statut === 'charge' ? 'disabled' : ''}>${t('ads.send')}</button>
-    </article>`;
-    const $ = s => feuille.querySelector(s);
-    $('.fermer').addEventListener('click', fermer);
-    $('#c-question').addEventListener('input', e => { etat.question = e.target.value; });
-    $('#c-image').addEventListener('change', async e => { const f = e.target.files?.[0]; if (f) { try { etat.image = await lireImage(f); } catch { /* ignorée */ } dessiner(); } });
-    $('#c-envoyer').addEventListener('click', async () => {
-      if (!etat.question.trim() && !etat.image) { toast(t('ads.needQuestion')); return; }
-      etat.erreur = ''; dessiner('charge');
-      try {
-        const profil = await D.chargerProfil();
-        const demande = buildCoachPrompt({ campagnes: pubs?.donnees?.campagnes, termes: pubs?.donnees?.termes, question: etat.question + (etat.image ? '\n(Screenshot of her Google Ads screen attached.)' : ''), profil, langue: getLang() });
-        etat.reponse = await D.appelIA(etat.image ? { ...demande, image: { mime: etat.image.mime, base64: etat.image.base64 } } : demande);
-      } catch (e) { etat.erreur = messageErreur(e); }
-      dessiner();
-    });
-  };
-  dessiner();
+  feuille.innerHTML = `<article class="ticket">
+    <div class="feuille-haut"><h2 id="q-titre">${t('ads.askClaude')}</h2><button type="button" class="fermer" aria-label="${t('reviews.close')}">×</button></div>
+    <p class="aide">${t('ads.claudeIntro')}</p>
+    <label class="champ"><span>${t('ads.question')}</span>
+      <textarea id="q-question" rows="3" placeholder="${t('ads.questionPlaceholder')}"></textarea></label>
+    <button type="button" class="bouton bouton-or bouton-large" id="q-ouvrir">${t('ads.openClaude')}</button>
+  </article>`;
+  feuille.querySelector('.fermer').addEventListener('click', fermer);
+  feuille.querySelector('#q-ouvrir').addEventListener('click', async () => {
+    const texte = questionPourClaude({ campagnes: pubs?.donnees?.campagnes, termes: pubs?.donnees?.termes, question: feuille.querySelector('#q-question').value.trim(), langue: getLang() });
+    await copier(texte); // au cas où Claude n'aurait pas repris la question : elle n'a qu'à coller
+    window.open(`${URL_CLAUDE}?q=${encodeURIComponent(texte)}`, '_blank', 'noopener');
+    toast(t('ads.claudeHint'));
+    fermer();
+  });
+  feuille.querySelector('#q-question').focus();
 }

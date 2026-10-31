@@ -332,3 +332,8 @@ main { padding: 4px 16px 0; max-width: 560px; margin: 0 auto; outline: none; }
 .bandeau-coupe { border: 2px dashed var(--ticket-ligne); border-radius: 10px; padding: 12px; margin: 0 0 16px; display: grid; gap: 10px; }
 .bandeau-coupe p { margin: 0; }
 .bandeau-coupe .aide { margin: 0; font-size: 14px; }
+
+/* « Une modification ? » après un texte de l'IA */
+.bloc-modifier { border-top: 1px dashed var(--ticket-ligne); padding-top: 14px; margin: 4px 0 14px; }
+.bloc-modifier .champ { margin-bottom: 10px; }
+.bloc-modifier textarea { min-height: 64px; }

@@ -183,7 +183,7 @@ export async function marquerPublie(id) {
 
 /* ---------- Pubs (chiffres envoyés par le script Google Ads) ---------- */
 const DEMO_PUBS = () => ({
-  id: 1, recu: new Date(Date.now() - 20 * 60e3).toISOString(), coach: null, coach_date: null,
+  id: 1, recu: new Date(Date.now() - 20 * 60e3).toISOString(),
   donnees: {
     date: new Date().toISOString(),
     campagnes: [
@@ -200,19 +200,6 @@ export async function dernieresPubs() {
   if (error) throw versReseau(error);
   return data;
 }
-// Résumé du coach déjà fait aujourd'hui (sur n'importe quel envoi de chiffres du jour)
-export async function coachDuJour(jour) {
-  if (estDemo()) { const p = demoLire().pubs; return p?.coach_date === jour ? p.coach : null; }
-  const { data, error } = await (await client()).from('ardv_pubs').select('coach').eq('coach_date', jour).not('coach', 'is', null).limit(1).maybeSingle();
-  if (error) throw versReseau(error);
-  return data?.coach || null;
-}
-export async function enregistrerCoach(id, texte, jour) {
-  if (estDemo()) { const d = demoLire(); d.pubs = { ...(d.pubs || DEMO_PUBS()), coach: texte, coach_date: jour }; demoEcrire(d); return; }
-  const { error } = await (await client()).from('ardv_pubs').update({ coach: texte, coach_date: jour }).eq('id', id);
-  if (error) throw versReseau(error);
-}
-
 /* ---------- Notifications ---------- */
 export async function enregistrerAbonnement(abonnement) {
   if (estDemo()) return;
@@ -231,7 +218,6 @@ export async function appelIA(demande) {
     if (erreur) throw new Error(erreur);
     if (/"titre"/.test(demande.system)) return JSON.stringify({ titre: 'Fermeture estivale', texte: 'Le Café Au Rendez-Vous sera fermé\ndu 10 au 24 août.\n\nRéouverture le mardi 25 août à 11h30.\nMerci de votre fidélité et bel été à tous !' });
     if (/Answer with the text only/.test(demande.system)) return 'Objet : Livraisons de café interrompues\n\nBonjour,\n\nDepuis trois semaines, nous ne recevons plus nos livraisons…\n\nBien cordialement,\nRafiza — Café Au Rendez-Vous';
-    if (/Google Ads coach/.test(demande.system)) return "Tout va bien sur « Semaine V2 ». « Weekend Dejeuner ARDV » est limitée par le budget : le samedi midi, passez le budget de 7 € à 9 € par jour (Campagnes → la campagne → Budget). Le dîner est en pause : c'est normal si vous êtes complets.";
     if (/"instagram"/.test(demande.system)) return JSON.stringify({
       google: "Une douceur maison vous attend aujourd'hui au Café Au Rendez-Vous, juste derrière la Basilique Cathédrale de Saint-Denis. Notre crème brûlée est préparée chaque matin, avec sa fine couche de sucre caramélisé qui craque sous la cuillère. Venez la goûter en terrasse, au calme de l'Allée des 6 Chapelles. On vous attend avec le sourire !",
       instagram: "Le petit craquement du caramel… 😍 Notre crème brûlée maison vous attend aujourd'hui, juste derrière la Basilique ✨\n\n#crêperiesaintdenis #saintdenis #basiliquesaintdenis #cremebrulee #faitmaison #galettesbretonnes #glacierartisanal #paris93",

@@ -1,6 +1,7 @@
 // Écran Écrire : modèles (affiches, e-mails, lettres) → quelques champs → texte prêt à copier, ou affiche à imprimer.
 import { t, getLang } from './i18n.js';
-import { esc, toast, messageErreur, copier, ICONES } from './ui.js';
+import { esc, toast, messageErreur, copier, ICONES, blocModifier } from './ui.js';
+import { avecModification } from './affiner.js';
 import { MODELES, buildEcrirePrompt, lireAffiche } from './ecrire-prompt.js';
 import * as D from './donnees.js';
 
@@ -54,15 +55,22 @@ function ouvrirModele(modele) {
           ${THEMES.map(th => `<button type="button" role="radio" aria-checked="${etat.theme === th}" data-theme="${th}"><span class="pastille t-${th}"></span>${t('write.t.' + th)}</button>`).join('')}
         </div>
         <div class="affiche t-${etat.theme}" id="affiche"><img class="affiche-logo" src="logo.png" alt="Logo Au Rendez-Vous"><p class="affiche-etoiles" aria-hidden="true">✦ ✦ ✦</p><h3>${esc(r.titre)}</h3><p class="affiche-texte">${esc(r.texte)}</p><p class="affiche-marque">Au Rendez-Vous</p><p class="affiche-pied">Crêperie &amp; Glacier Artisanaux</p><p class="affiche-ville">✦ SAINT-DENIS ✦</p></div>
-        <button type="button" class="bouton bouton-or bouton-large" id="e-imprimer">${t('write.print')}</button>` : ''}
+        <button type="button" class="bouton bouton-or bouton-large" id="e-imprimer">${t('write.print')}</button>
+        ${blocModifier()}` : ''}
       ${r && !modele.affiche ? `
         <textarea class="reponse post-texte" id="e-texte" rows="12">${esc(r)}</textarea>
-        <button type="button" class="bouton bouton-or bouton-large" id="e-copier">${ICONES.copier}${t('reviews.copy')}</button>` : ''}
+        <button type="button" class="bouton bouton-or bouton-large" id="e-copier">${ICONES.copier}${t('reviews.copy')}</button>
+        ${blocModifier()}` : ''}
     </article>`;
     const $ = s => feuille.querySelector(s);
     $('.fermer').addEventListener('click', fermer);
     feuille.querySelectorAll('[data-champ]').forEach(z => z.addEventListener('input', () => { etat.valeurs[z.dataset.champ] = z.value; }));
-    $('#e-ecrire').addEventListener('click', ecrire);
+    $('#e-ecrire').addEventListener('click', () => ecrire());
+    $('#ia-modifier')?.addEventListener('click', () => {
+      const consigne = $('#ia-consigne').value.trim();
+      if (!consigne) { toast(t('ai.needChange')); $('#ia-consigne').focus(); return; }
+      ecrire(consigne);
+    });
     $('#e-texte')?.addEventListener('input', e => { etat.resultat = e.target.value; });
     $('#e-copier')?.addEventListener('click', async () => toast((await copier(etat.resultat)) ? t('reviews.copied') : t('reviews.copyFailed')));
     $('#e-imprimer')?.addEventListener('click', imprimer);
@@ -73,13 +81,13 @@ function ouvrirModele(modele) {
     }));
   };
 
-  const ecrire = async () => {
+  const ecrire = async (consigne = '') => {
     if (!Object.values(etat.valeurs).some(v => String(v).trim())) { toast(t('write.needFields')); return; }
     etat.erreur = '';
     dessiner('charge');
     try {
       const profil = await D.chargerProfil();
-      const texte = await D.appelIA(buildEcrirePrompt(modele.id, etat.valeurs, profil, getLang()));
+      const texte = await D.appelIA(avecModification(buildEcrirePrompt(modele.id, etat.valeurs, profil, getLang()), consigne ? etat.resultat : '', consigne));
       etat.resultat = modele.affiche ? lireAffiche(texte) : texte;
     } catch (e) { etat.erreur = e.message === 'réponse illisible' ? t('err.ia') : messageErreur(e); }
     dessiner();

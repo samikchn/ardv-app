@@ -1,9 +1,13 @@
 // Écran Posts : les posts préparés (tickets), et le ticket « nouveau post » : photos → idée → 3 textes → partager / rappel.
 import { t, getLang } from './i18n.js';
-import { esc, numero, toast, messageErreur, copier, ICONES } from './ui.js';
+import { esc, numero, toast, messageErreur, copier, ICONES, blocModifier } from './ui.js';
+import { avecModification } from './affiner.js';
 import { buildPostPrompt, lireTextesPost } from './posts-prompt.js';
 import { sauverBrouillon, lireBrouillon, effacerBrouillon } from './brouillon.js';
-import { lireImage } from './images.js';
+import { lireImage, imagesDuCollage, imageDuPressePapiers } from './images.js';
+
+// Sa fiche Google (gestion de l'établissement) : on y colle le texte du post
+const URL_FICHE_GOOGLE = 'https://business.google.com/';
 import { activerRappels, etatRappels } from './rappels.js';
 import * as D from './donnees.js';
 
@@ -97,6 +101,7 @@ async function ouvrirPost(existant, apresFermeture) {
         ${vignettes().length < 4 ? `<label class="ajout-photo" for="p-photos">${ICONES.photo}<span>${t('posts.addPhotos')}</span></label>` : ''}
         <input type="file" id="p-photos" accept="image/*" multiple hidden>
       </div>
+      ${vignettes().length < 4 ? `<button type="button" class="bouton bouton-trait bouton-large" id="p-coller-image" style="margin-bottom:16px">${ICONES.coller}${t('img.paste')}</button>` : ''}
       <label class="champ"><span>${t('posts.idea')}</span>
         <textarea id="p-idee" rows="3" placeholder="${t('posts.ideaPlaceholder')}">${esc(etat.idee)}</textarea></label>
       <label class="case"><input type="checkbox" id="p-anglais" ${etat.anglais ? 'checked' : ''}>${t('posts.english')}</label>
@@ -109,7 +114,8 @@ async function ouvrirPost(existant, apresFermeture) {
           <p class="reponse-titre">${t(cle)}</p>
           <textarea class="reponse post-texte" data-plateforme="${k}" rows="6">${esc(etat.textes[k] || '')}</textarea>
           <div class="rangee"><button type="button" class="bouton bouton-or" data-copier="${k}">${ICONES.copier}${t('reviews.copy')}</button>
-          ${k !== 'google' && navigator.share ? `<button type="button" class="bouton bouton-trait" data-partager="${k}">${t('posts.share')}</button>` : ''}</div>`).join('')}
+          ${k === 'google' ? `<button type="button" class="bouton bouton-trait" id="p-google">${t('posts.openGoogle')}</button>` : navigator.share ? `<button type="button" class="bouton bouton-trait" data-partager="${k}">${t('posts.share')}</button>` : ''}</div>`).join('')}
+        ${blocModifier()}
         ${etat.textes.nomFichier ? `<p class="aide">${t('posts.fileName')} <b>${esc(etat.textes.nomFichier)}</b></p>` : ''}
         <label class="champ"><span>${t('posts.reminder')}</span>
           <input type="datetime-local" id="p-rappel" value="${versChamp(etat.rappel)}"></label>
@@ -124,12 +130,7 @@ async function ouvrirPost(existant, apresFermeture) {
     $('.fermer').addEventListener('click', fermer);
     $('#p-idee').addEventListener('input', e => { etat.idee = e.target.value; if (!existant) sauverBrouillon('post-idee', etat.idee); });
     $('#p-anglais').addEventListener('change', e => { etat.anglais = e.target.checked; });
-    $('#p-photos').addEventListener('change', async e => {
-      for (const f of [...(e.target.files || [])].slice(0, 4 - vignettes().length)) {
-        try { etat.photos.push(await lireImage(f, 1024)); } catch { /* photo illisible : ignorée */ }
-      }
-      dessiner();
-    });
+    $('#p-photos').addEventListener('change', e => ajouterPhotos([...(e.target.files || [])]));
     feuille.querySelectorAll('.retirer-photo').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.i;
       if (i < etat.urls.length) { etat.urls.splice(i, 1); etat.chemins.splice(i, 1); } else etat.photos.splice(i - etat.urls.length, 1);
@@ -140,7 +141,22 @@ async function ouvrirPost(existant, apresFermeture) {
       toast((await copier(etat.textes[b.dataset.copier] || '')) ? t('reviews.copied') : t('reviews.copyFailed'));
     }));
     feuille.querySelectorAll('[data-partager]').forEach(b => b.addEventListener('click', () => partager(b.dataset.partager)));
-    $('#p-ecrire').addEventListener('click', ecrire);
+    $('#p-ecrire').addEventListener('click', () => ecrire());
+    $('#ia-modifier')?.addEventListener('click', () => {
+      const consigne = $('#ia-consigne').value.trim();
+      if (!consigne) { toast(t('ai.needChange')); $('#ia-consigne').focus(); return; }
+      ecrire(consigne);
+    });
+    $('#p-coller-image')?.addEventListener('click', async () => {
+      const f = await imageDuPressePapiers();
+      if (!f) { toast(t('img.nothing')); return; }
+      await ajouterPhotos([f]);
+    });
+    $('#p-google')?.addEventListener('click', async () => {
+      const ok = await copier(etat.textes.google || '');
+      window.open(URL_FICHE_GOOGLE, '_blank', 'noopener');
+      toast(ok ? t('posts.googleHint') : t('reviews.copyFailed'));
+    });
     $('#p-rappel')?.addEventListener('change', e => { etat.rappel = e.target.value ? new Date(e.target.value).toISOString() : null; });
     $('#p-enregistrer')?.addEventListener('click', enregistrer);
     $('#p-publie')?.addEventListener('click', async () => {
@@ -148,13 +164,27 @@ async function ouvrirPost(existant, apresFermeture) {
     });
   };
 
-  const ecrire = async () => {
+  const ajouterPhotos = async fichiers => {
+    for (const f of fichiers.slice(0, 4 - vignettes().length)) {
+      try { etat.photos.push(await lireImage(f, 1024)); } catch { /* photo illisible : ignorée */ }
+    }
+    dessiner();
+  };
+  // Ctrl+V d'une photo ou d'une capture n'importe où dans le post
+  feuille.addEventListener('paste', e => {
+    const images = imagesDuCollage(e);
+    if (!images.length) return;
+    e.preventDefault();
+    ajouterPhotos(images);
+  });
+
+  const ecrire = async (consigne = '') => {
     if (!etat.idee.trim() && !vignettes().length) { dessiner('vide'); return; }
     etat.erreur = '';
     dessiner('charge');
     try {
       const profil = await D.chargerProfil();
-      const demande = buildPostPrompt({ idee: etat.idee, profil, nbPhotos: etat.photos.length, anglais: etat.anglais });
+      const demande = avecModification(buildPostPrompt({ idee: etat.idee, profil, nbPhotos: etat.photos.length, anglais: etat.anglais }), consigne ? etat.textes : '', consigne);
       const images = etat.photos.map(p => ({ mime: p.mime, base64: p.base64 }));
       etat.textes = lireTextesPost(await D.appelIA(images.length ? { ...demande, images } : demande));
     } catch (e) {
@@ -181,14 +211,14 @@ async function ouvrirPost(existant, apresFermeture) {
     .then(b => { etat.blobsEnregistres = b; });
 
   // Partage natif Android : photos + texte → Instagram / Facebook s'ouvrent avec tout prêt
-  const partager = plateforme => {
+  const partager = async plateforme => {
     const texte = etat.textes[plateforme] || '';
+    await copier(texte); // d'abord : Instagram ne reprend pas le texte partagé, elle le collera (copie quasi instantanée)
     const blobs = [...etat.blobsEnregistres.filter(Boolean), ...etat.photos.map(p => p.blob)];
     const fichiers = blobs.map((b, i) => new File([b], nomPhoto(i), { type: 'image/jpeg' }));
     const donnees = fichiers.length && navigator.canShare?.({ files: fichiers }) ? { files: fichiers, text: texte } : { text: texte };
-    const envoi = navigator.share(donnees); // tout de suite, sans attendre : sinon Android refuse
-    copier(texte); // Instagram ignore souvent le texte partagé : il reste dans le presse-papiers
-    envoi.then(() => toast(t('posts.sharedHint')))
+    const envoi = navigator.share(donnees); // juste après le toucher : sinon Android refuse
+    envoi.then(() => toast(plateforme === 'instagram' ? t('posts.instaHint') : t('posts.sharedHint')))
       .catch(e => { if (e?.name !== 'AbortError') toast(t('posts.shareFailed')); });
   };
 
