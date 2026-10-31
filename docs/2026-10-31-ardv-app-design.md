@@ -42,6 +42,7 @@ Depuis avril 2026, elle utilise Claude (environ 30 conversations) pour toujours 
 | Clé | Jamais dans le navigateur : gardée dans une fonction serveur | Claude |
 | Serveur | Supabase (base, fonctions, notifications). Projet créé par Claude via l'outil Supabase, une fois Sami connecté à son compte | Claude / Sami |
 | Hébergement | **GitHub Pages** (gratuit, sans crédits), compte GitHub `samikchn`. **Pas Netlify** (consomme des crédits). Le dépôt est public, donc aucun secret ni avis réel ne doit s'y trouver | Sami |
+| Téléphone | **Google Pixel (Android, Chrome)**, pas un iPhone : installation par « Installer l'application », notifications web possibles sans App Store. Les mentions « iPhone » de ce document valent pour « son téléphone » | Sami |
 | Langue | Bouton FR / EN | Sami |
 | Accès Google | Pas de formulaire ni d'API officielle. Données récupérées par **deux scripts Google** collés une fois par Sami (il a le compte de sa mère sur son PC) | Sami |
 | Modification | Lecture seule + bouton pour ouvrir Google | Sami |

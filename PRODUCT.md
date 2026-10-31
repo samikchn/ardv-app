@@ -12,7 +12,7 @@ Static HTML/CSS/JS ES modules, no build step (same approach as the owner's son's
 
 ## Users
 
-Rafiza, owner-manager of Café Au Rendez-Vous, a Breton crêperie and artisan ice-cream shop behind the Basilique de Saint-Denis. She uses it on her iPhone, often between services or at the counter, sometimes on a PC. She describes herself as not technical and asks for explanations "like for a ten-year-old girl". She writes mostly in English mixed with French. Her son Sami installs and maintains the app.
+Rafiza, owner-manager of Café Au Rendez-Vous, a Breton crêperie and artisan ice-cream shop behind the Basilique de Saint-Denis. She uses it on her Google Pixel (Android, Chrome), often between services or at the counter, sometimes on a PC. She describes herself as not technical and asks for explanations "like for a ten-year-old girl". She writes mostly in English mixed with French. Her son Sami installs and maintains the app.
 
 ## Product Purpose
 
