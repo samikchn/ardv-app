@@ -1,6 +1,6 @@
 // Service worker : garde les fichiers de l'appli pour un démarrage rapide (réseau d'abord, cache en secours).
-const CACHE = 'ardv-v10';
-const FICHIERS = ['./', 'index.html', 'style.css', 'config.js', 'manifest.json', 'icon.svg', 'icon-180.png', 'icon-192.png',
+const CACHE = 'ardv-v11';
+const FICHIERS = ['./', 'index.html', 'style.css', 'config.js', 'manifest.json', 'icon.svg', 'icon-180.png', 'icon-192.png', 'logo.png',
   'js/app.js', 'js/i18n.js', 'js/ui.js', 'js/donnees.js', 'js/profil.js', 'js/avis-prompt.js', 'js/brouillon.js',
   'js/ecran-avis.js', 'js/ecran-fiche.js', 'js/connexion.js',
   'js/images.js', 'js/ecran-posts.js', 'js/posts-prompt.js', 'js/rappels.js', 'js/pubs.js', 'js/ecran-pubs.js', 'js/ecrire-prompt.js', 'js/ecran-ecrire.js'];

@@ -45,7 +45,7 @@ function ouvrirModele(modele) {
       <button type="button" class="bouton ${r ? 'bouton-trait' : 'bouton-or'} bouton-large" id="e-ecrire" ${statut === 'charge' ? 'disabled' : ''}>${ICONES.plume}${r ? t('posts.rewrite') : t('write.write')}</button>
       ${r && modele.affiche ? `
         <label class="case"><input type="checkbox" id="e-nb" ${etat.noirBlanc ? 'checked' : ''}>${t('write.bw')}</label>
-        <div class="affiche${etat.noirBlanc ? ' nb' : ''}" id="affiche"><p class="affiche-nom">Café Au Rendez-Vous</p><h3>${esc(r.titre)}</h3><p class="affiche-texte">${esc(r.texte)}</p><p class="affiche-pied">Crêperie &amp; Glacier Artisanaux · Saint-Denis</p></div>
+        <div class="affiche${etat.noirBlanc ? ' nb' : ''}" id="affiche"><img class="affiche-logo" src="logo.png" alt="Logo Au Rendez-Vous"><p class="affiche-etoiles" aria-hidden="true">✦ ✦ ✦</p><h3>${esc(r.titre)}</h3><p class="affiche-texte">${esc(r.texte)}</p><p class="affiche-marque">Au Rendez-Vous</p><p class="affiche-pied">Crêperie &amp; Glacier Artisanaux</p><p class="affiche-ville">✦ SAINT-DENIS ✦</p></div>
         <button type="button" class="bouton bouton-or bouton-large" id="e-imprimer">${t('write.print')}</button>` : ''}
       ${r && !modele.affiche ? `
         <textarea class="reponse post-texte" id="e-texte" rows="12">${esc(r)}</textarea>
