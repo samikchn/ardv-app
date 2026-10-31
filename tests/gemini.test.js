@@ -1,0 +1,45 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { corpsGemini, lireTexteGemini, mapGeminiError, estAutorise } from '../supabase/functions/ardv-ia/gemini.js';
+
+const LISTE = ['maman@example.com', 'sami@example.com'];
+
+test('erreurs Gemini', () => {
+  assert.equal(mapGeminiError(429), 'quota');
+  assert.equal(mapGeminiError(500), 'ia');
+  assert.equal(mapGeminiError(400), 'ia');
+});
+
+test('liste des comptes autorisés', () => {
+  assert.equal(estAutorise(' MaMan@Example.com ', LISTE), true);
+  assert.equal(estAutorise('x@y.fr', LISTE), false);
+  assert.equal(estAutorise('', LISTE), false);
+  assert.equal(estAutorise(undefined, LISTE), false);
+});
+
+test('lecture de la réponse', () => {
+  assert.equal(lireTexteGemini({ candidates: [{ content: { parts: [{ text: 'Bon' }, { text: 'jour' }] } }] }), 'Bonjour');
+  assert.throws(() => lireTexteGemini({}));
+});
+
+test('corps de la demande, avec image', () => {
+  const c = corpsGemini({ system: 'S', user: 'U', image: { mime: 'image/jpeg', base64: 'AAA' } });
+  assert.equal(c.systemInstruction.parts[0].text, 'S');
+  const parts = c.contents[0].parts;
+  assert.equal(parts[0].text, 'U');
+  assert.deepEqual(parts[1], { inline_data: { mime_type: 'image/jpeg', data: 'AAA' } });
+});
+
+test('corps sans image', () => {
+  const c = corpsGemini({ system: 'S', user: 'U' });
+  assert.equal(c.contents[0].parts.length, 1);
+});
+
+test('revue relue : pas de réflexion qui mange la réponse', () => {
+  const c = corpsGemini({ system: 'S', user: 'U' });
+  assert.equal(c.generationConfig.thinkingConfig.thinkingBudget, 0);
+});
+
+test('revue relue : réponse coupée refusée', () => {
+  assert.throws(() => lireTexteGemini({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'Merci pour' }] } }] }));
+});

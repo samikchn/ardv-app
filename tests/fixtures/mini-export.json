@@ -1,0 +1,51 @@
+[
+  {
+    "name": "Répondre à un avis client positif",
+    "chat_messages": [
+      {
+        "sender": "human",
+        "text": "i received an avis from Lulu, please respond"
+      },
+      {
+        "sender": "assistant",
+        "text": "Voici une réponse :\n\nChère Lulu,\n\nMerci pour ce joli message ! C'est un plaisir de vous accueillir à deux pas de la Basilique de Saint-Denis.\n\nL'équipe du Café Au Rendez-Vous\naurendezvous-saintdenis.fr"
+      },
+      {
+        "sender": "assistant",
+        "text": "Dear Mark, thank you so much for stopping by our crêperie in Saint-Denis!\n\nL'équipe du Café Au Rendez-Vous"
+      },
+      {
+        "sender": "assistant",
+        "text": "```\nThis block is not supported on your current device yet.\n```\nReady to post!",
+        "content": [
+          {
+            "type": "text",
+            "text": " "
+          },
+          {
+            "type": "tool_use",
+            "name": "message_compose_v1",
+            "input": {
+              "kind": "other",
+              "variants": [
+                {
+                  "body": "Merci Meldy pour ce super avis ! On vous attend au Café Au Rendez-Vous.\n\nL'équipe du Café Au Rendez-Vous\naurendezvous-saintdenis.fr",
+                  "label": "Warm"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "PC redémarre lors de jeux",
+    "chat_messages": [
+      {
+        "sender": "assistant",
+        "text": "Au Rendez-Vous de ton PC : vérifie l'alimentation."
+      }
+    ]
+  }
+]

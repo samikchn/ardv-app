@@ -1,0 +1,242 @@
+/* Café Au Rendez-Vous — le carnet de commandes.
+   Comptoir indigo (sa vitrine), tickets crème, or réservé aux tampons et à l'action principale. */
+
+:root {
+  --comptoir: #1F2366;
+  --comptoir-2: #2B3080;
+  --ticket: #FBF6E9;
+  --ticket-ligne: #E4DAC0;
+  --encre: #1C1D3A;
+  --encre-douce: #4B4D6E;
+  --or: #F2C230;
+  --or-fonce: #8A6400;
+  --sur-or: #1C1D3A;
+  --rouge: #B3261E;
+  --vert: #1F6B3A;
+  --ombre: 0 2px 4px rgba(0, 0, 0, .16), 0 10px 24px rgba(0, 0, 0, .22);
+  --rayon: 6px;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --chiffres: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --onglets-h: 64px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --comptoir: #10122E;
+    --comptoir-2: #1A1D45;
+    --ticket: #2A2C4A;
+    --ticket-ligne: #3E4168;
+    --encre: #F5EFDC;
+    --encre-douce: #C9C4B0;
+    --or-fonce: #F2C230;
+    --ombre: 0 2px 4px rgba(0, 0, 0, .4), 0 10px 24px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--comptoir);
+  color: var(--encre);
+  font: 17px/1.5 var(--sans);
+  padding-bottom: calc(var(--onglets-h) + env(safe-area-inset-bottom) + 96px);
+}
+::selection { background: var(--or); color: var(--sur-or); }
+:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 4px; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+
+/* ---------- Comptoir (en-tête) ---------- */
+.comptoir {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
+  color: var(--ticket);
+}
+.comptoir { color: #FBF6E9; }
+.enseigne { display: flex; flex-direction: column; line-height: 1.15; }
+.enseigne-nom { font-size: 22px; font-weight: 800; letter-spacing: -.01em; color: var(--or); }
+.enseigne-sous { font-size: 14px; opacity: .8; }
+.langues { display: flex; border: 1.5px solid rgba(251, 246, 233, .5); border-radius: 999px; padding: 3px; }
+.langues button {
+  min-width: 48px; min-height: 40px; border: 0; border-radius: 999px; background: transparent;
+  color: #FBF6E9; font-weight: 700; font-size: 15px; letter-spacing: .04em;
+}
+.langues button[aria-pressed="true"] { background: #FBF6E9; color: var(--comptoir); }
+
+.bandeau-demo {
+  margin: 0 16px 8px; padding: 8px 12px; border-radius: var(--rayon);
+  background: rgba(242, 194, 48, .16); color: #FBF6E9; font-size: 14px;
+}
+
+main { padding: 4px 16px 0; max-width: 560px; margin: 0 auto; outline: none; }
+
+/* ---------- Titres sur le comptoir ---------- */
+.titre-ecran { color: #FBF6E9; font-size: 28px; line-height: 1.15; margin: 10px 0 4px; letter-spacing: -.01em; }
+.sous-titre { color: rgba(251, 246, 233, .82); margin: 0 0 18px; font-size: 16px; }
+
+/* ---------- Le ticket ---------- */
+.ticket {
+  position: relative;
+  background: var(--ticket);
+  color: var(--encre);
+  border-radius: 2px 2px var(--rayon) var(--rayon);
+  box-shadow: var(--ombre);
+  padding: 22px 18px 18px;
+  margin: 0 0 14px;
+}
+/* bord perforé du haut */
+.ticket::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 10px;
+  background: radial-gradient(circle at 5px 5px, var(--comptoir) 3.2px, transparent 3.6px) 0 0 / 12px 10px repeat-x;
+}
+.ticket-tete {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 10px; border-bottom: 1px dashed var(--ticket-ligne); margin-bottom: 12px;
+}
+.ticket-num { font-family: var(--chiffres); font-size: 15px; color: var(--encre-douce); font-variant-numeric: tabular-nums; }
+.ticket-nom { font-weight: 700; font-size: 18px; text-transform: uppercase; letter-spacing: .03em; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.etoiles { color: var(--or-fonce); letter-spacing: 1px; font-size: 16px; white-space: nowrap; }
+.ticket-texte { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.ticket-texte.coupe { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* pile de tickets */
+.pile { list-style: none; padding: 0; margin: 0; }
+.pile li { margin: 0 0 14px; }
+.pile li:nth-child(2n) .ticket { transform: rotate(-.6deg); }
+.pile li:nth-child(3n) .ticket { transform: rotate(.5deg); }
+.pile .ticket { cursor: pointer; transition: transform .25s cubic-bezier(.2, .8, .2, 1); }
+.pile .ticket:active { transform: translateY(2px) scale(.995); }
+
+/* état SERVI : le ticket reste, tamponné */
+.ticket.servi { opacity: .72; padding-bottom: 52px; }
+.ticket.servi .ticket-texte { text-decoration: line-through; text-decoration-color: var(--encre-douce); }
+.tampon {
+  position: absolute; right: 14px; bottom: 12px;
+  border: 3px solid var(--or-fonce); color: var(--or-fonce);
+  padding: 2px 10px; border-radius: 6px; font-weight: 900; letter-spacing: .12em; font-size: 15px;
+  transform: rotate(-9deg); text-transform: uppercase; background: transparent;
+}
+.tampon.attente { border-color: var(--comptoir-2); color: var(--comptoir-2); transform: none; position: static; font-size: 12px; padding: 1px 8px; border-width: 2px; }
+@media (prefers-color-scheme: dark) { .tampon.attente { border-color: var(--encre-douce); color: var(--encre-douce); } }
+
+.compteur { color: #FBF6E9; font-weight: 700; margin: 0 0 12px; font-size: 17px; }
+.vide { color: rgba(251, 246, 233, .85); text-align: center; padding: 28px 8px; border: 1.5px dashed rgba(251, 246, 233, .35); border-radius: var(--rayon); margin-bottom: 16px; }
+.servis-titre { color: rgba(251, 246, 233, .8); font-size: 15px; margin: 24px 0 10px; font-weight: 600; }
+
+/* ---------- Boutons ---------- */
+.bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px; padding: 12px 20px; border-radius: 10px; border: 0;
+  font-weight: 700; font-size: 17px; text-decoration: none;
+  transition: transform .15s cubic-bezier(.2, .8, .2, 1), filter .15s;
+}
+.bouton:active { transform: scale(.98); }
+.bouton:disabled { opacity: .5; cursor: default; }
+.bouton svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bouton-or { background: var(--or); color: var(--sur-or); box-shadow: 0 2px 0 #B98E10, 0 8px 18px rgba(0,0,0,.25); }
+.bouton-or:hover { filter: brightness(1.04); }
+.bouton-encre { background: var(--comptoir); color: #FBF6E9; }
+.bouton-trait { background: transparent; color: var(--encre); border: 2px solid var(--ticket-ligne); }
+.bouton-large { width: 100%; }
+.action-fixe {
+  position: fixed; left: 16px; right: 16px; z-index: 5;
+  bottom: calc(var(--onglets-h) + env(safe-area-inset-bottom) + 12px);
+  max-width: 528px; margin: 0 auto;
+}
+
+/* ---------- Onglets (talons de tickets) ---------- */
+.onglets {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--ticket); color: var(--encre);
+  padding: 4px 4px env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, .25);
+}
+.onglets::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 10px;
+  background: radial-gradient(circle at 5px 5px, var(--comptoir) 3.2px, transparent 3.6px) 0 0 / 12px 10px repeat-x;
+}
+.onglets button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: var(--onglets-h); border: 0; background: transparent; color: var(--encre-douce);
+  font-size: 12.5px; font-weight: 600; border-radius: 8px;
+}
+.onglets svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.onglets button[aria-current="page"] { color: var(--encre); }
+.onglets button[aria-current="page"] svg { stroke: var(--comptoir-2); stroke-width: 2.2; }
+@media (prefers-color-scheme: dark) { .onglets button[aria-current="page"] svg { stroke: var(--or); } }
+.onglets button[aria-current="page"] span { border-bottom: 3px solid var(--or); }
+
+/* ---------- Formulaires (sur ticket) ---------- */
+.champ { display: block; margin: 0 0 16px; }
+.champ > span { display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+.champ input, .champ textarea {
+  width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 8px;
+  border: 1.5px solid var(--ticket-ligne); background: color-mix(in srgb, var(--ticket) 70%, white);
+  font-size: 17px; caret-color: var(--comptoir-2);
+}
+@media (prefers-color-scheme: dark) { .champ input, .champ textarea { background: #22243F; caret-color: var(--or); } }
+.champ textarea { min-height: 130px; resize: vertical; line-height: 1.45; }
+.champ input:focus, .champ textarea:focus { border-color: var(--comptoir-2); outline: none; box-shadow: 0 0 0 3px rgba(242, 194, 48, .55); }
+::placeholder { color: var(--encre-douce); opacity: .8; }
+.case { display: flex; gap: 12px; align-items: center; min-height: 48px; font-weight: 600; margin: 0 0 16px; }
+.case input { width: 24px; height: 24px; accent-color: var(--comptoir-2); }
+.rangee { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; }
+.rangee .bouton { flex: 1 1 140px; }
+.choix-etoiles { display: flex; gap: 4px; margin: 0 0 16px; }
+.choix-etoiles button {
+  width: 48px; height: 48px; border: 0; background: transparent; padding: 0;
+  font-size: 30px; line-height: 1; color: var(--ticket-ligne);
+}
+.choix-etoiles button[aria-pressed="true"] { color: var(--or-fonce); }
+.apercu-capture { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
+.apercu-capture img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1.5px solid var(--ticket-ligne); }
+.aide { color: var(--encre-douce); font-size: 15px; margin: 0 0 16px; }
+
+/* ---------- Feuille (le ticket ouvert) ---------- */
+.feuille {
+  position: fixed; inset: 0; z-index: 10; overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(8, 10, 34, .62);
+  padding: calc(16px + env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom));
+}
+.feuille .ticket { max-width: 560px; margin: 8px auto 0; animation: sortie .32s cubic-bezier(.16, 1, .3, 1); }
+@keyframes sortie { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .feuille .ticket { animation: none; } .pile .ticket { transition: none; } }
+.feuille-haut { display: flex; justify-content: space-between; align-items: center; margin: 0 0 12px; }
+.feuille-haut h2 { margin: 0; font-size: 22px; }
+.fermer { min-width: 48px; min-height: 48px; border: 0; background: transparent; font-size: 28px; line-height: 1; color: var(--encre-douce); border-radius: 8px; }
+
+.reponse {
+  background: color-mix(in srgb, var(--ticket) 60%, white);
+  border: 1.5px solid var(--ticket-ligne); border-radius: 8px;
+  padding: 16px; margin: 0 0 16px; white-space: pre-wrap; font-size: 17px; line-height: 1.55;
+}
+@media (prefers-color-scheme: dark) { .reponse { background: #22243F; } }
+.reponse-titre { font-weight: 700; font-size: 15px; margin: 4px 0 8px; display: flex; align-items: center; gap: 8px; }
+.erreur { background: #FDECEA; color: var(--rouge); border-radius: 8px; padding: 12px 14px; margin: 0 0 16px; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .erreur { background: #4A1F1C; color: #FFB4AB; } }
+.chargement { display: flex; align-items: center; gap: 12px; color: var(--encre-douce); margin: 0 0 16px; font-weight: 600; }
+.chargement::before {
+  content: ""; width: 22px; height: 22px; border-radius: 50%;
+  border: 3px solid var(--ticket-ligne); border-top-color: var(--comptoir-2);
+  animation: tourne .8s linear infinite;
+}
+@keyframes tourne { to { transform: rotate(360deg); } }
+
+/* ---------- Bientôt ---------- */
+.bientot { text-align: center; padding: 34px 20px; }
+.bientot h2 { margin: 0 0 6px; }
+.bientot p { margin: 0; color: var(--encre-douce); }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; z-index: 20; bottom: calc(var(--onglets-h) + env(safe-area-inset-bottom) + 80px);
+  transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--or); color: var(--sur-or); font-weight: 700; padding: 12px 20px; border-radius: 999px;
+  box-shadow: var(--ombre); transition: opacity .2s, transform .3s cubic-bezier(.16, 1, .3, 1);
+}
+.toast.visible { opacity: 1; transform: translate(-50%, 0); }
